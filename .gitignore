@@ -1,0 +1,158 @@
+# =======================================
+# BACKEND (Java/Maven/Spring Boot)
+# =======================================
+
+# Maven
+backend/target/
+backend/pom.xml.tag
+backend/pom.xml.releaseBackup
+backend/pom.xml.versionsBackup
+backend/pom.xml.next
+backend/release.properties
+backend/dependency-reduced-pom.xml
+backend/buildNumber.properties
+backend/.mvn/timing.properties
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# Gradle (si utilisé)
+backend/.gradle/
+backend/build/
+backend/!gradle/wrapper/gradle-wrapper.jar
+backend/!**/src/main/**/build/
+backend/!**/src/test/**/build/
+
+# Spring Boot
+backend/HELP.md
+
+# Fichiers uploadés
+backend/uploads/
+uploads/
+
+# =======================================
+# IDE (IntelliJ IDEA, Eclipse, VS Code)
+# =======================================
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# =======================================
+# FRONTEND (React/Node.js)
+# =======================================
+
+# Dependencies
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+# Testing
+frontend/coverage
+
+# Production
+frontend/build
+frontend/dist
+
+# Misc
+frontend/.DS_Store
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# =======================================
+# SYSTÈME D'EXPLOITATION
+# =======================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =======================================
+# LOGS
+# =======================================
+
+*.log
+logs/
+*.log.*
+
+# =======================================
+# ENVIRONNEMENT
+# =======================================
+
+.env
+.env.local
+.env.*.local
+
+# =======================================
+# FICHIERS TEMPORAIRES
+# =======================================
+
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+.#*
+
+# =======================================
+# BASE DE DONNÉES (locale)
+# =======================================
+
+*.db
+*.sqlite
+*.sqlite3
+h2/

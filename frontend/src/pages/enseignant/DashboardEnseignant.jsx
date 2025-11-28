@@ -1,0 +1,292 @@
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import DashboardLayout from '../../components/layout/DashboardLayout';
+import { MdCalendarToday, MdCheckCircle } from 'react-icons/md';
+import { seanceService, presenceService } from '../../services/api';
+import './DashboardEnseignant.css';
+
+function DashboardEnseignant() {
+  const { user } = useAuth();
+  const [activeView, setActiveView] = useState('seances');
+  const [mesSeances, setMesSeances] = useState([]);
+  const [seanceActive, setSeanceActive] = useState(null);
+  const [currentCode, setCurrentCode] = useState(null);
+  const [codeExpiration, setCodeExpiration] = useState(null);
+  const [countdown, setCountdown] = useState(30);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [presences, setPresences] = useState([]);
+  const [selectedSeanceForPresences, setSelectedSeanceForPresences] = useState(null);
+
+  const menuItems = [
+    {
+      icon: <MdCalendarToday />,
+      label: 'Mes Séances',
+      active: activeView === 'seances',
+      onClick: () => setActiveView('seances')
+    },
+    {
+      icon: <MdCheckCircle />,
+      label: 'Présences',
+      active: activeView === 'presences',
+      onClick: () => setActiveView('presences')
+    }
+  ];
+
+  useEffect(() => {
+    if (user) {
+      loadSeances();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    let interval;
+    if (seanceActive && currentCode) {
+      interval = setInterval(() => {
+        const now = new Date().getTime();
+        const expiration = new Date(codeExpiration).getTime();
+        const remaining = Math.max(0, Math.floor((expiration - now) / 1000));
+
+        setCountdown(remaining);
+
+        if (remaining === 0) {
+          renewCode();
+        }
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [seanceActive, currentCode, codeExpiration]);
+
+  const loadSeances = async () => {
+    try {
+      const response = await seanceService.getByEnseignant(user.id);
+      setMesSeances(response.data);
+    } catch (error) {
+      console.error('Erreur chargement séances:', error);
+    }
+  };
+
+  const startSeance = async (seanceId) => {
+    try {
+      const response = await seanceService.start(seanceId);
+      setSeanceActive(seanceId);
+      setCurrentCode(response.data.code);
+      setCodeExpiration(response.data.expiration);
+      setMessage({ type: 'success', text: 'Séance lancée avec succès!' });
+      loadSeances();
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Erreur lors du lancement'
+      });
+    }
+  };
+
+  const stopSeance = async (seanceId) => {
+    try {
+      await seanceService.stop(seanceId);
+      setSeanceActive(null);
+      setCurrentCode(null);
+      setCodeExpiration(null);
+      setMessage({ type: 'success', text: 'Séance arrêtée. Absences enregistrées automatiquement.' });
+      loadSeances();
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Erreur lors de l\'arrêt'
+      });
+    }
+  };
+
+  const renewCode = async () => {
+    if (!seanceActive) return;
+
+    try {
+      const response = await seanceService.renewCode(seanceActive);
+      setCurrentCode(response.data.code);
+      setCodeExpiration(response.data.expiration);
+    } catch (error) {
+      console.error('Erreur renouvellement code:', error);
+    }
+  };
+
+  const viewPresences = async (seanceId) => {
+    try {
+      const response = await presenceService.getBySeance(seanceId);
+      setPresences(response.data);
+      setSelectedSeanceForPresences(mesSeances.find(s => s.id === seanceId));
+      setActiveView('presences');
+      setMessage({ type: '', text: '' });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: 'Erreur lors du chargement des présences'
+      });
+    }
+  };
+
+  const renderSeancesView = () => (
+    <div className="seances-section">
+      <h2>Mes Séances</h2>
+
+      {seanceActive && currentCode && (
+        <div className="active-seance-banner">
+          <div className="banner-content">
+            <h3>Séance en cours</h3>
+            <div className="code-display">
+              <span className="code-label">Code de présence:</span>
+              <span className="code-value">{currentCode}</span>
+            </div>
+            <div className="code-timer">
+              <div className="timer-bar" style={{ width: `${(countdown / 30) * 100}%` }}></div>
+              <span className="timer-text">Expire dans {countdown}s</span>
+            </div>
+            <button
+              className="btn btn-danger"
+              onClick={() => stopSeance(seanceActive)}
+            >
+              Arrêter la Séance
+            </button>
+          </div>
+        </div>
+      )}
+
+      {message.text && (
+        <div className={`message ${message.type}`}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="seances-list">
+        {mesSeances.length > 0 ? (
+          mesSeances.map((seance) => (
+            <div key={seance.id} className="seance-card">
+              <div className="seance-header">
+                <h3>{seance.matiere?.nom}</h3>
+                <span className={`badge ${seance.seanceActive ? 'badge-success' : 'badge-secondary'}`}>
+                  {seance.seanceActive ? 'Active' : 'Terminée'}
+                </span>
+              </div>
+              <div className="seance-details">
+                <p><strong>Type:</strong> {seance.typeSeance}</p>
+                <p><strong>Date:</strong> {new Date(seance.dateDebut).toLocaleString('fr-FR')}</p>
+                <p><strong>Durée:</strong> {new Date(seance.dateDebut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - {new Date(seance.dateFin).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                <p><strong>Salle:</strong> {seance.salle}</p>
+                {seance.groupe && <p><strong>Groupe:</strong> {seance.groupe.nom}</p>}
+              </div>
+              <div className="seance-actions">
+                {!seance.seanceActive && seanceActive !== seance.id && (
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => startSeance(seance.id)}
+                  >
+                    Lancer la Séance
+                  </button>
+                )}
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => viewPresences(seance.id)}
+                >
+                  Voir Présences
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="no-data">Aucune séance programmée</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderPresencesView = () => (
+    <div className="presences-section">
+      <div className="presences-header">
+        <h2>Liste de Présences</h2>
+        <button className="btn btn-secondary" onClick={() => setActiveView('seances')}>
+          Retour aux Séances
+        </button>
+      </div>
+
+      {selectedSeanceForPresences && (
+        <div className="seance-info-card">
+          <h3>{selectedSeanceForPresences.matiere?.nom}</h3>
+          <p><strong>Date:</strong> {new Date(selectedSeanceForPresences.dateDebut).toLocaleString('fr-FR')}</p>
+          <p><strong>Salle:</strong> {selectedSeanceForPresences.salle}</p>
+          {selectedSeanceForPresences.groupe && <p><strong>Groupe:</strong> {selectedSeanceForPresences.groupe.nom}</p>}
+        </div>
+      )}
+
+      {message.text && (
+        <div className={`message ${message.type}`}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="data-table">
+        <h3>Présences enregistrées ({presences.length})</h3>
+        {presences.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Étudiant</th>
+                <th>N° Étudiant</th>
+                <th>Statut</th>
+                <th>Heure de pointage</th>
+                <th>Commentaire</th>
+              </tr>
+            </thead>
+            <tbody>
+              {presences.map((presence) => (
+                <tr key={presence.id}>
+                  <td>
+                    <strong>{presence.etudiant?.nom} {presence.etudiant?.prenom}</strong>
+                  </td>
+                  <td>{presence.etudiant?.numeroEtudiant}</td>
+                  <td>
+                    <span className={`badge ${
+                      presence.statut === 'PRESENT' ? 'badge-success' :
+                      presence.statut === 'ABSENT' ? 'badge-danger' :
+                      presence.statut === 'RETARD' ? 'badge-warning' :
+                      'badge-info'
+                    }`}>
+                      {presence.statut === 'PRESENT' ? 'Présent' :
+                       presence.statut === 'ABSENT' ? 'Absent' :
+                       presence.statut === 'RETARD' ? 'Retard' :
+                       'Justifié'}
+                    </span>
+                  </td>
+                  <td>
+                    {presence.heurePointage ?
+                      new Date(presence.heurePointage).toLocaleTimeString('fr-FR') :
+                      '-'
+                    }
+                  </td>
+                  <td>{presence.commentaire || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="no-data">Aucune présence enregistrée pour cette séance</p>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <DashboardLayout menuItems={menuItems}>
+      <div className="dashboard-enseignant">
+        <div className="dashboard-header">
+          <h1>Tableau de Bord Enseignant</h1>
+          <p>Bienvenue, {user?.prenom} {user?.nom}</p>
+        </div>
+
+        {activeView === 'seances' && renderSeancesView()}
+        {activeView === 'presences' && renderPresencesView()}
+      </div>
+    </DashboardLayout>
+  );
+}
+
+export default DashboardEnseignant;

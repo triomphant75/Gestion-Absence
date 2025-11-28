@@ -1,0 +1,95 @@
+-- Script d'initialisation de données de test
+-- Ce script s'exécute automatiquement au démarrage de l'application
+
+-- ========================================
+-- 1. DÉPARTEMENTS
+-- ========================================
+INSERT INTO departements (nom, description, actif) VALUES
+('Informatique', 'Département des Sciences Informatiques', true),
+('Mathématiques', 'Département de Mathématiques et Statistiques', true),
+('Physique', 'Département de Physique Appliquée', true);
+
+-- ========================================
+-- 2. FORMATIONS
+-- ========================================
+INSERT INTO formations (nom, description, departement_id, niveau, actif) VALUES
+('Licence Informatique', 'Licence en Sciences Informatiques', 1, 3, true),
+('Master Informatique', 'Master en Informatique Avancée', 1, 5, true),
+('Licence Mathématiques', 'Licence en Mathématiques Appliquées', 2, 3, true);
+
+-- ========================================
+-- 3. MATIÈRES
+-- ========================================
+INSERT INTO matieres (nom, code, description, formation_id, seuil_absences, actif) VALUES
+('Programmation Java', 'INF301', 'Cours de programmation orientée objet en Java', 1, 3, true),
+('Bases de données', 'INF302', 'Conception et gestion de bases de données', 1, 3, true),
+('Algorithmes', 'INF303', 'Structures de données et algorithmes', 1, 3, true),
+('Développement Web', 'INF304', 'Technologies Web modernes', 1, 3, true);
+
+-- ========================================
+-- 4. GROUPES TD/TP
+-- ========================================
+INSERT INTO groupes (nom, formation_id, actif) VALUES
+('Groupe A', 1, true),
+('Groupe B', 1, true),
+('Groupe C', 1, true);
+
+-- ========================================
+-- 5. UTILISATEURS
+-- ========================================
+-- Mot de passe pour tous les comptes de test : "password123"
+-- Hash BCrypt de "password123"
+INSERT INTO users (nom, prenom, email, telephone, mot_de_passe, role, actif, created_at, updated_at) VALUES
+-- ADMINISTRATEUR
+('Admin', 'Système', 'admin@university.com', '0601020304', '$2a$10$8nZ9YqJVEwF5xJ5Gn5kXK.RH5Gq8jxJLvQ7jxXz7xR5Gq8jxJLvQ7j', 'ADMIN', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+
+-- CHEF DE DÉPARTEMENT
+('Dupont', 'Jean', 'chef.info@university.com', '0601020305', '$2a$10$8nZ9YqJVEwF5xJ5Gn5kXK.RH5Gq8jxJLvQ7jxXz7xR5Gq8jxJLvQ7j', 'CHEF_DEPARTEMENT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+
+-- ENSEIGNANTS
+('Martin', 'Sophie', 'sophie.martin@university.com', '0601020306', '$2a$10$8nZ9YqJVEwF5xJ5Gn5kXK.RH5Gq8jxJLvQ7jxXz7xR5Gq8jxJLvQ7j', 'ENSEIGNANT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('Bernard', 'Pierre', 'pierre.bernard@university.com', '0601020307', '$2a$10$8nZ9YqJVEwF5xJ5Gn5kXK.RH5Gq8jxJLvQ7jxXz7xR5Gq8jxJLvQ7j', 'ENSEIGNANT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+
+-- ÉTUDIANTS
+('Dubois', 'Marie', 'marie.dubois@student.university.com', '0601020308', '$2a$10$8nZ9YqJVEwF5xJ5Gn5kXK.RH5Gq8jxJLvQ7jxXz7xR5Gq8jxJLvQ7j', 'ETUDIANT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('Petit', 'Luc', 'luc.petit@student.university.com', '0601020309', '$2a$10$8nZ9YqJVEwF5xJ5Gn5kXK.RH5Gq8jxJLvQ7jxXz7xR5Gq8jxJLvQ7j', 'ETUDIANT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('Moreau', 'Julie', 'julie.moreau@student.university.com', '0601020310', '$2a$10$8nZ9YqJVEwF5xJ5Gn5kXK.RH5Gq8jxJLvQ7jxXz7xR5Gq8jxJLvQ7j', 'ETUDIANT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+('Simon', 'Thomas', 'thomas.simon@student.university.com', '0601020311', '$2a$10$8nZ9YqJVEwF5xJ5Gn5kXK.RH5Gq8jxJLvQ7jxXz7xR5Gq8jxJLvQ7j', 'ETUDIANT', true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- Mise à jour des champs spécifiques
+-- Chef de département
+UPDATE users SET departement_id = 1, numero_enseignant = 'ENS001' WHERE email = 'chef.info@university.com';
+
+-- Enseignants
+UPDATE users SET departement_id = 1, numero_enseignant = 'ENS002' WHERE email = 'sophie.martin@university.com';
+UPDATE users SET departement_id = 1, numero_enseignant = 'ENS003' WHERE email = 'pierre.bernard@university.com';
+
+-- Étudiants
+UPDATE users SET formation_id = 1, numero_etudiant = 'ETU001' WHERE email = 'marie.dubois@student.university.com';
+UPDATE users SET formation_id = 1, numero_etudiant = 'ETU002' WHERE email = 'luc.petit@student.university.com';
+UPDATE users SET formation_id = 1, numero_etudiant = 'ETU003' WHERE email = 'julie.moreau@student.university.com';
+UPDATE users SET formation_id = 1, numero_etudiant = 'ETU004' WHERE email = 'thomas.simon@student.university.com';
+
+-- ========================================
+-- 6. AFFECTATION DES ÉTUDIANTS AUX GROUPES
+-- ========================================
+INSERT INTO groupe_etudiants (etudiant_id, groupe_id, date_affectation) VALUES
+(5, 1, CURRENT_TIMESTAMP), -- Marie dans Groupe A
+(6, 1, CURRENT_TIMESTAMP), -- Luc dans Groupe A
+(7, 2, CURRENT_TIMESTAMP), -- Julie dans Groupe B
+(8, 2, CURRENT_TIMESTAMP); -- Thomas dans Groupe B
+
+-- ========================================
+-- 7. SÉANCES (exemples)
+-- ========================================
+INSERT INTO seances (matiere_id, enseignant_id, type_seance, groupe_id, date_debut, date_fin, salle, seance_active, terminee, annulee, created_at, updated_at) VALUES
+-- CM Programmation Java (toute la promotion)
+(1, 3, 'CM', NULL, CURRENT_TIMESTAMP + INTERVAL '1 day', CURRENT_TIMESTAMP + INTERVAL '1 day' + INTERVAL '2 hours', 'Amphi A', false, false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+
+-- TD Programmation Java - Groupe A
+(1, 3, 'TD_TP', 1, CURRENT_TIMESTAMP + INTERVAL '2 days', CURRENT_TIMESTAMP + INTERVAL '2 days' + INTERVAL '2 hours', 'Salle TP1', false, false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+
+-- TD Bases de données - Groupe A
+(2, 4, 'TD_TP', 1, CURRENT_TIMESTAMP + INTERVAL '3 days', CURRENT_TIMESTAMP + INTERVAL '3 days' + INTERVAL '2 hours', 'Salle TP2', false, false, false, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+-- Note : Les présences et absences seront créées automatiquement lors de l'utilisation du système
