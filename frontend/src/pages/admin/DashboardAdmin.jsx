@@ -87,7 +87,7 @@ function DashboardAdmin() {
   const [editingGroupe, setEditingGroupe] = useState(null);
   const [selectedGroupeForStudents, setSelectedGroupeForStudents] = useState(null);
   const [groupeEtudiants, setGroupeEtudiants] = useState([]);
-  const [availableStudents, setAvailableStudents] = useState([]);
+  const [formationEtudiants, setFormationEtudiants] = useState([]);
 
   const [seances, setSeances] = useState([]);
   const [enseignants, setEnseignants] = useState([]);
@@ -114,6 +114,12 @@ function DashboardAdmin() {
       label: 'Utilisateurs',
       active: activeView === 'users',
       onClick: () => setActiveView('users')
+    },
+    {
+      icon: <MdSchool />,
+      label: 'Étudiants',
+      active: activeView === 'etudiants',
+      onClick: () => setActiveView('etudiants')
     },
     {
       icon: <MdBusiness />,
@@ -260,12 +266,23 @@ function DashboardAdmin() {
 
     try {
       const userData = {
-        ...newUser,
-        formationId: newUser.formationId ? parseInt(newUser.formationId) : null
+        nom: newUser.nom,
+        prenom: newUser.prenom,
+        email: newUser.email,
+        telephone: newUser.telephone,
+        motDePasse: newUser.motDePasse,
+        role: newUser.role
       };
-      if (newUser.role !== 'ETUDIANT') {
-        delete userData.numeroEtudiant;
-        delete userData.formationId;
+
+      // Ajouter les champs spécifiques aux étudiants
+      if (newUser.role === 'ETUDIANT') {
+        userData.numeroEtudiant = newUser.numeroEtudiant;
+        // Envoyer la formation comme objet avec l'ID
+        if (newUser.formationId) {
+          userData.formation = {
+            id: parseInt(newUser.formationId)
+          };
+        }
       }
 
       await userService.create(userData);
@@ -592,16 +609,34 @@ function DashboardAdmin() {
 
   const loadGroupeEtudiants = async (groupeId) => {
     try {
-      const response = await groupeEtudiantService.getEtudiantsGroupe(groupeId);
-      setGroupeEtudiants(response.data);
+      // Trouver le groupe pour obtenir sa formation
+      const groupe = groupes.find(g => g.id === groupeId);
 
-      // Charger les étudiants disponibles (pas dans ce groupe)
-      const allStudents = await userService.getByRole('ETUDIANT');
-      const studentsInGroupe = response.data.map(ge => ge.etudiant.id);
-      const available = allStudents.data.filter(s => !studentsInGroupe.includes(s.id));
-      setAvailableStudents(available);
+      if (!groupe || !groupe.formation) {
+        setMessage({
+          type: 'error',
+          text: 'Ce groupe n\'a pas de formation associée'
+        });
+        return;
+      }
+
+      // Charger les étudiants du groupe
+      const groupeResponse = await groupeEtudiantService.getEtudiantsGroupe(groupeId);
+      setGroupeEtudiants(groupeResponse.data);
+
+      // Charger TOUS les étudiants de la formation
+      const allStudentsResponse = await userService.getByRole('ETUDIANT');
+      const etudiantsFormation = allStudentsResponse.data.filter(
+        s => s.formation?.id === groupe.formation.id
+      );
+      setFormationEtudiants(etudiantsFormation);
+
     } catch (error) {
       console.error('Erreur chargement étudiants du groupe:', error);
+      setMessage({
+        type: 'error',
+        text: 'Erreur lors du chargement des étudiants'
+      });
     }
   };
 
@@ -1835,6 +1870,56 @@ function DashboardAdmin() {
     );
   };
 
+  const renderEtudiantsView = () => {
+    // Filtrer uniquement les étudiants
+    const etudiants = users.filter(u => u.role === 'ETUDIANT');
+
+    return (
+      <div className="etudiants-section">
+        <h2>Liste des Étudiants</h2>
+
+        <div className="data-table">
+          <h3>Tous les Étudiants ({etudiants.length})</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Numéro Étudiant</th>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Email</th>
+                <th>Formation</th>
+                <th>Téléphone</th>
+              </tr>
+            </thead>
+            <tbody>
+              {etudiants.map((etudiant) => (
+                <tr key={etudiant.id}>
+                  <td><strong>{etudiant.numeroEtudiant || 'N/A'}</strong></td>
+                  <td>{etudiant.nom}</td>
+                  <td>{etudiant.prenom}</td>
+                  <td>{etudiant.email}</td>
+                  <td>
+                    {etudiant.formation ? (
+                      <span className="badge badge-info">
+                        {etudiant.formation.nom}
+                      </span>
+                    ) : (
+                      <span className="badge badge-secondary">Non assigné</span>
+                    )}
+                  </td>
+                  <td>{etudiant.telephone || '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {etudiants.length === 0 && (
+            <p className="no-data">Aucun étudiant trouvé</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderGroupesView = () => (
     <div className="groupes-section">
       <h2>Gestion des Groupes TD/TP</h2>
@@ -1850,61 +1935,62 @@ function DashboardAdmin() {
         <div className="modal-overlay" onClick={() => setSelectedGroupeForStudents(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Gérer les Étudiants - {selectedGroupeForStudents.nom}</h3>
+              <h3>Étudiants du Groupe : {selectedGroupeForStudents.nom}</h3>
               <button className="modal-close" onClick={() => setSelectedGroupeForStudents(null)}>
                 <MdClose />
               </button>
             </div>
 
             <div className="modal-body">
-              {/* Étudiants dans le groupe */}
               <div className="students-section">
-                <h4>Étudiants du groupe ({groupeEtudiants.length})</h4>
-                {groupeEtudiants.length > 0 ? (
-                  <div className="students-list">
-                    {groupeEtudiants.map((ge) => (
-                      <div key={ge.id} className="student-item">
-                        <div className="student-info">
-                          <strong>{ge.etudiant.nom} {ge.etudiant.prenom}</strong>
-                          <span className="student-number">{ge.etudiant.numeroEtudiant}</span>
-                        </div>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleRemoveStudentFromGroupe(ge.etudiant.id, selectedGroupeForStudents.id)}
-                        >
-                          Retirer
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="no-data-sm">Aucun étudiant dans ce groupe</p>
-                )}
-              </div>
+                <h4>Formation : {selectedGroupeForStudents.formation?.nom}</h4>
+                <p className="text-muted">
+                  Cochez les étudiants qui font partie de ce groupe
+                </p>
 
-              {/* Étudiants disponibles */}
-              <div className="students-section">
-                <h4>Ajouter des étudiants ({availableStudents.length} disponibles)</h4>
-                {availableStudents.length > 0 ? (
+                {formationEtudiants.length > 0 ? (
                   <div className="students-list">
-                    {availableStudents.map((student) => (
-                      <div key={student.id} className="student-item">
-                        <div className="student-info">
-                          <strong>{student.nom} {student.prenom}</strong>
-                          <span className="student-number">{student.numeroEtudiant}</span>
+                    {formationEtudiants.map((etudiant) => {
+                      // Vérifier si l'étudiant est dans le groupe
+                      const isInGroupe = groupeEtudiants.some(ge => ge.etudiant.id === etudiant.id);
+
+                      return (
+                        <div key={etudiant.id} className="student-item">
+                          <div className="student-info">
+                            <strong>{etudiant.nom} {etudiant.prenom}</strong>
+                            <span className="student-number">{etudiant.numeroEtudiant}</span>
+                          </div>
+                          {isInGroupe ? (
+                            <button
+                              className="btn btn-sm btn-danger"
+                              onClick={() => handleRemoveStudentFromGroupe(etudiant.id, selectedGroupeForStudents.id)}
+                            >
+                              ✓ Dans le groupe - Retirer
+                            </button>
+                          ) : (
+                            <button
+                              className="btn btn-sm btn-success"
+                              onClick={() => handleAddStudentToGroupe(etudiant.id, selectedGroupeForStudents.id)}
+                            >
+                              + Ajouter au groupe
+                            </button>
+                          )}
                         </div>
-                        <button
-                          className="btn btn-sm btn-success"
-                          onClick={() => handleAddStudentToGroupe(student.id, selectedGroupeForStudents.id)}
-                        >
-                          Ajouter
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <p className="no-data-sm">Tous les étudiants sont déjà affectés</p>
+                  <p className="no-data-sm">
+                    Aucun étudiant dans la formation {selectedGroupeForStudents.formation?.nom}.
+                    Créez d'abord des étudiants pour cette formation.
+                  </p>
                 )}
+
+                <div className="modal-footer">
+                  <p className="text-muted">
+                    {groupeEtudiants.length} / {formationEtudiants.length} étudiants dans le groupe
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -2093,6 +2179,7 @@ function DashboardAdmin() {
 
         {activeView === 'dashboard' && renderDashboardView()}
         {activeView === 'users' && renderUsersView()}
+        {activeView === 'etudiants' && renderEtudiantsView()}
         {activeView === 'departements' && renderDepartementsView()}
         {activeView === 'formations' && renderFormationsView()}
         {activeView === 'matieres' && renderMatieresView()}

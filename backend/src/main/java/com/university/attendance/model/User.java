@@ -1,5 +1,6 @@
 package com.university.attendance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -45,15 +46,17 @@ public class User {
     // Champs spécifiques aux étudiants
     private String numeroEtudiant;  // Numéro unique de l'étudiant
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "formation_id")
+    @JsonIgnoreProperties({"etudiants", "matieres", "groupes"})
     private Formation formation;
 
     // Champs spécifiques aux enseignants
     private String numeroEnseignant;  // Numéro unique de l'enseignant
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "departement_id")
+    @JsonIgnoreProperties({"enseignants", "formations"})
     private Departement departement;
 
     @Column(name = "created_at", updatable = false)

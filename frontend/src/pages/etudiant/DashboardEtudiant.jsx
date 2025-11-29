@@ -92,10 +92,12 @@ function DashboardEtudiant() {
     setMessage({ type: '', text: '' });
 
     try {
-      await presenceService.validateCode({
-        seanceId: parseInt(seanceId),
-        code: seanceCode.toUpperCase()
-      });
+      // Appel correct : (seanceId, code, userId)
+      await presenceService.validateCode(
+        parseInt(seanceId),
+        seanceCode.toUpperCase(),
+        user.id
+      );
       setMessage({ type: 'success', text: 'Présence validée avec succès!' });
       setSeanceCode('');
       setSeanceId('');

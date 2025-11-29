@@ -1,5 +1,6 @@
 package com.university.attendance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 /**
@@ -14,12 +15,14 @@ public class GroupeEtudiant {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "etudiant_id", nullable = false)
+    @JsonIgnoreProperties({"formation", "departement", "motDePasse", "actif", "createdAt", "updatedAt"})
     private User etudiant;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "groupe_id", nullable = false)
+    @JsonIgnoreProperties({"formation", "etudiants"})
     private Groupe groupe;
 
     @Column(name = "date_affectation")

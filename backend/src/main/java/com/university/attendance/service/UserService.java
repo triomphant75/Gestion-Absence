@@ -1,7 +1,9 @@
 package com.university.attendance.service;
 
+import com.university.attendance.model.Formation;
 import com.university.attendance.model.Role;
 import com.university.attendance.model.User;
+import com.university.attendance.repository.FormationRepository;
 import com.university.attendance.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -22,6 +24,9 @@ public class UserService {
     private UserRepository userRepository;
 
     @Autowired
+    private FormationRepository formationRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     /**
@@ -30,6 +35,14 @@ public class UserService {
     public User createUser(User user) {
         // Encode le mot de passe
         user.setMotDePasse(passwordEncoder.encode(user.getMotDePasse()));
+
+        // Si une formation est associée (pour les étudiants), on la récupère
+        if (user.getFormation() != null && user.getFormation().getId() != null) {
+            Formation formation = formationRepository.findById(user.getFormation().getId())
+                    .orElseThrow(() -> new RuntimeException("Formation non trouvée avec l'id : " + user.getFormation().getId()));
+            user.setFormation(formation);
+        }
+
         return userRepository.save(user);
     }
 
