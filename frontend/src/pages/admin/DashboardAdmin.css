@@ -319,6 +319,13 @@
   flex-wrap: wrap;
 }
 
+/* Ensure inline action buttons don't expand to full width (override .btn-primary) */
+.action-buttons-inline .btn {
+  width: auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
 /* Badge Variants */
 .badge-info {
   background-color: #17a2b8;

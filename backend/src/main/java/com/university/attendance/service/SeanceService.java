@@ -1,15 +1,28 @@
 package com.university.attendance.service;
 
-import com.university.attendance.model.*;
-import com.university.attendance.repository.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.university.attendance.dto.EtudiantInscritDTO;
+import com.university.attendance.model.GroupeEtudiant;
+import com.university.attendance.model.Presence;
+import com.university.attendance.model.Role;
+import com.university.attendance.model.Seance;
+import com.university.attendance.model.StatutPresence;
+import com.university.attendance.model.StatutSeance;
+import com.university.attendance.model.TypeSeance;
+import com.university.attendance.model.User;
+import com.university.attendance.repository.GroupeEtudiantRepository;
+import com.university.attendance.repository.PresenceRepository;
+import com.university.attendance.repository.SeanceRepository;
+import com.university.attendance.repository.UserRepository;
 
 /**
  * Service pour gérer les séances de cours
@@ -257,4 +270,75 @@ public class SeanceService {
     public void deleteSeance(Long id) {
         seanceRepository.deleteById(id);
     }
+
+    /** Récupère la liste de tous les étudiants inscrits à une séance CM ou TP/TD */
+    public List<EtudiantInscritDTO> getEtudiantsInscritsASeance(Long seanceId) {
+        Seance seance = seanceRepository.findById(seanceId)
+                .orElseThrow(() -> new RuntimeException("Séance non trouvée avec l'id : " + seanceId));
+
+        List<User> etudiants;
+
+        // Si c'est un CM, récupérer tous les étudiants de la formation
+        if (seance.getTypeSeance() == TypeSeance.CM) {
+            Long formationId = seance.getMatiere().getFormation().getId();
+            etudiants = userRepository.findByFormationIdAndRoleAndActif(
+                    formationId, Role.ETUDIANT, true);
+        } 
+        // Si c'est un TD/TP, récupérer les étudiants du groupe
+        else if (seance.getGroupe() != null) {
+            etudiants = groupeEtudiantRepository.findEtudiantsByGroupeId(
+                    seance.getGroupe().getId());
+        } 
+        else {
+            throw new RuntimeException("Séance TD/TP sans groupe assigné");
+        }
+
+        // Convertir en DTO avec les informations nécessaires
+        return etudiants.stream()
+                .map(etudiant -> {
+                    EtudiantInscritDTO dto = new EtudiantInscritDTO();
+                    dto.setId(etudiant.getId());
+                    dto.setNumeroEtudiant(etudiant.getNumeroEtudiant());
+                    dto.setNom(etudiant.getNom());
+                    dto.setPrenom(etudiant.getPrenom());
+                    dto.setEmail(etudiant.getEmail());
+                    dto.setTelephone(etudiant.getTelephone());
+                    
+                    // Ajouter le nom du groupe si c'est un TD/TP
+                    if (seance.getGroupe() != null) {
+                        dto.setNomGroupe(seance.getGroupe().getNom());
+                    }
+                    
+                    // Ajouter le nom de la formation
+                    if (etudiant.getFormation() != null) {
+                        dto.setNomFormation(etudiant.getFormation().getNom());
+                    }
+                    
+                    return dto;
+                })
+                .sorted((e1, e2) -> {
+                    // Tri par nom puis prénom
+                    int compareNom = e1.getNom().compareToIgnoreCase(e2.getNom());
+                    if (compareNom != 0) return compareNom;
+                    return e1.getPrenom().compareToIgnoreCase(e2.getPrenom());
+                })
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Alias utilisé par le contrôleur et d'autres services — délègue
+     * à `getEtudiantsInscritsASeance` pour préserver l'API existante.
+     */
+    public List<EtudiantInscritDTO> getEtudiantsInscrits(Long seanceId) {
+        return getEtudiantsInscritsASeance(seanceId);
+    }
+
+    /**
+     * Compte le nombre d'étudiants inscrits à une séance
+     */
+    public int countEtudiantsInscrits(Long seanceId) {
+        return getEtudiantsInscrits(seanceId).size();
+    }
+
+
 }

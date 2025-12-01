@@ -1,12 +1,13 @@
 package com.university.attendance.repository;
 
-import com.university.attendance.model.Role;
-import com.university.attendance.model.User;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
+import com.university.attendance.model.Role;
+import com.university.attendance.model.User;
 
 /**
  * Repository pour l'entité User
@@ -64,4 +65,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Trouve tous les enseignants d'un département
      */
     List<User> findByDepartementIdAndRole(Long departementId, Role role);
+
+    /**
+     * Trouve tous les étudiants actifs d'une formation
+     * Utilisé pour les CM (cours magistraux)
+     */
+    List<User> findByFormationIdAndRoleAndActif(Long formationId, Role role, Boolean actif);
 }

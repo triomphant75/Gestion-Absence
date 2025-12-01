@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import { MdCalendarToday, MdCheckCircle } from 'react-icons/md';
+import { MdCalendarToday, MdCheckCircle, MdPeople } from 'react-icons/md';
 import { seanceService, presenceService } from '../../services/api';
 import './DashboardEnseignant.css';
 
@@ -17,6 +17,11 @@ function DashboardEnseignant() {
   const [message, setMessage] = useState({ type: '', text: '' });
   const [presences, setPresences] = useState([]);
   const [selectedSeanceForPresences, setSelectedSeanceForPresences] = useState(null);
+  
+  //états pour la liste des étudiants
+  const [etudiantsInscrits, setEtudiantsInscrits] = useState([]);
+  const [selectedSeanceForEtudiants, setSelectedSeanceForEtudiants] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const menuItems = [
     {
@@ -30,6 +35,12 @@ function DashboardEnseignant() {
       label: 'Présences',
       active: activeView === 'presences',
       onClick: () => setActiveView('presences')
+    },
+    {
+      icon: <MdPeople />,
+      label: 'Étudiants Inscrits',
+      active: activeView === 'etudiants',
+      onClick: () => setActiveView('etudiants')
     }
   ];
 
@@ -39,7 +50,6 @@ function DashboardEnseignant() {
     }
   }, [user]);
 
-  // Auto-dismiss messages after 6 seconds
   useEffect(() => {
     if (message.text) {
       const timer = setTimeout(() => {
@@ -146,6 +156,37 @@ function DashboardEnseignant() {
     }
   };
 
+  // liste des étudiants inscrits
+  const viewEtudiantsInscrits = async (seanceId) => {
+    try {
+      setLoading(true);
+      const response = await seanceService.getEtudiantsInscrits(seanceId);
+      setEtudiantsInscrits(response.data.etudiants);
+      setSelectedSeanceForEtudiants(mesSeances.find(s => s.id === seanceId));
+      setActiveView('etudiants');
+      setSearchTerm('');
+      setMessage({ type: '', text: '' });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: 'Erreur lors du chargement des étudiants inscrits'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filtrer les étudiants selon la recherche
+  const filteredEtudiants = etudiantsInscrits.filter(etudiant => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      etudiant.nom.toLowerCase().includes(searchLower) ||
+      etudiant.prenom.toLowerCase().includes(searchLower) ||
+      etudiant.numeroEtudiant.toLowerCase().includes(searchLower) ||
+      etudiant.email.toLowerCase().includes(searchLower)
+    );
+  });
+
   const renderSeancesView = () => (
     <div className="seances-section">
       <h2>Mes Séances</h2>
@@ -225,6 +266,13 @@ function DashboardEnseignant() {
                   onClick={() => viewPresences(seance.id)}
                 >
                   Voir Présences
+                </button>
+                <button
+                  className="btn btn-info"
+                  onClick={() => viewEtudiantsInscrits(seance.id)}
+                >
+                  <MdPeople style={{ marginRight: '5px' }} />
+                  Liste Étudiants
                 </button>
               </div>
             </div>
@@ -311,6 +359,91 @@ function DashboardEnseignant() {
     </div>
   );
 
+  const renderEtudiantsView = () => (
+    <div className="etudiants-section">
+      <div className="etudiants-header">
+        <h2>Étudiants Inscrits</h2>
+        <button className="btn btn-secondary" onClick={() => setActiveView('seances')}>
+          Retour aux Séances
+        </button>
+      </div>
+
+      {selectedSeanceForEtudiants && (
+        <div className="seance-info-card">
+          <h3>{selectedSeanceForEtudiants.matiere?.nom}</h3>
+          <div className="seance-info-details">
+            <p><strong>Type:</strong> {selectedSeanceForEtudiants.typeSeance}</p>
+            <p><strong>Date:</strong> {new Date(selectedSeanceForEtudiants.dateDebut).toLocaleString('fr-FR')}</p>
+            <p><strong>Salle:</strong> {selectedSeanceForEtudiants.salle}</p>
+            {selectedSeanceForEtudiants.groupe && (
+              <p><strong>Groupe:</strong> {selectedSeanceForEtudiants.groupe.nom}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {message.text && (
+        <div className={`message ${message.type}`}>
+          {message.text}
+        </div>
+      )}
+
+      <div className="data-table">
+        <div className="table-header-controls">
+          <h3>Liste des étudiants ({filteredEtudiants.length})</h3>
+          <div className="search-box">
+            <input
+              type="text"
+              placeholder="Rechercher un étudiant..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+        </div>
+
+        {loading ? (
+          <p className="loading">Chargement...</p>
+        ) : filteredEtudiants.length > 0 ? (
+          <table>
+            <thead>
+              <tr>
+                <th>N° Étudiant</th>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                {selectedSeanceForEtudiants?.typeSeance !== 'CM' && <th>Groupe</th>}
+                <th>Formation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEtudiants.map((etudiant) => (
+                <tr key={etudiant.id}>
+                  <td><strong>{etudiant.numeroEtudiant}</strong></td>
+                  <td>{etudiant.nom}</td>
+                  <td>{etudiant.prenom}</td>
+                  <td>{etudiant.email}</td>
+                  <td>{etudiant.telephone || '-'}</td>
+                  {selectedSeanceForEtudiants?.typeSeance !== 'CM' && (
+                    <td>
+                      <span className="badge badge-info">{etudiant.nomGroupe}</span>
+                    </td>
+                  )}
+                  <td>{etudiant.nomFormation}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="no-data">
+            {searchTerm ? 'Aucun étudiant ne correspond à votre recherche' : 'Aucun étudiant inscrit à cette séance'}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayout menuItems={menuItems}>
       <div className="dashboard-enseignant">
@@ -321,6 +454,7 @@ function DashboardEnseignant() {
 
         {activeView === 'seances' && renderSeancesView()}
         {activeView === 'presences' && renderPresencesView()}
+        {activeView === 'etudiants' && renderEtudiantsView()}
       </div>
     </DashboardLayout>
   );

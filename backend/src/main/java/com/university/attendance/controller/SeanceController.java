@@ -1,19 +1,34 @@
 package com.university.attendance.controller;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.university.attendance.dto.EtudiantInscritDTO;
 import com.university.attendance.dto.SeanceDTO;
-import com.university.attendance.model.*;
+import com.university.attendance.model.Groupe;
+import com.university.attendance.model.Matiere;
+import com.university.attendance.model.Seance;
+import com.university.attendance.model.TypeSeance;
+import com.university.attendance.model.User;
 import com.university.attendance.repository.GroupeRepository;
 import com.university.attendance.repository.MatiereRepository;
 import com.university.attendance.repository.UserRepository;
 import com.university.attendance.service.SeanceService;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import jakarta.validation.Valid;
 
 /**
  * Controller pour gérer les séances
@@ -256,6 +271,54 @@ public class SeanceController {
             return ResponseEntity.ok(Map.of("message", "Séance supprimée avec succès"));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    
+    /**
+     * Obtient la liste de tous les étudiants inscrits à une séance
+     * GET /api/seances/{id}/etudiants
+     * 
+     * Utile pour :
+     * - Consulter la liste des étudiants qui doivent assister au cours
+     * - Préparer une liste d'émargement
+     * - Vérifier les effectifs
+     */
+    @GetMapping("/{id}/etudiants")
+    public ResponseEntity<?> getEtudiantsInscrits(@PathVariable Long id) {
+        try {
+            List<EtudiantInscritDTO> etudiants = seanceService.getEtudiantsInscrits(id);
+            
+            Map<String, Object> response = Map.of(
+                "seanceId", id,
+                "totalEtudiants", etudiants.size(),
+                "etudiants", etudiants
+            );
+            
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Obtient le nombre d'étudiants inscrits à une séance
+     * GET /api/seances/{id}/etudiants/count
+     */
+    @GetMapping("/{id}/etudiants/count")
+    public ResponseEntity<?> countEtudiantsInscrits(@PathVariable Long id) {
+        try {
+            int count = seanceService.countEtudiantsInscrits(id);
+            return ResponseEntity.ok(Map.of(
+                "seanceId", id,
+                "totalEtudiants", count
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", e.getMessage()
+            ));
         }
     }
 }

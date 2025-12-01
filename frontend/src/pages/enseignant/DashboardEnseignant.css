@@ -514,3 +514,31 @@
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   font-size: 1.1rem;
 }
+
+/* Barre de recherche */
+.search-box {
+  flex: 0 1 300px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Info card séance améliorée */
+.seance-info-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}

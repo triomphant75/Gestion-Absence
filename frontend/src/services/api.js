@@ -68,7 +68,9 @@ export const seanceService = {
   renewCode: (id) => api.post(`/seances/${id}/renew-code`),
   getCurrentCode: (id) => api.get(`/seances/${id}/code`),
   cancel: (id) => api.put(`/seances/${id}/cancel`),
-  delete: (id) => api.delete(`/seances/${id}`)
+  delete: (id) => api.delete(`/seances/${id}`),
+  getEtudiantsInscrits: (id) => api.get(`/seances/${id}/etudiants`),
+  countEtudiantsInscrits: (id) => api.get(`/seances/${id}/etudiants/count`)
 };
 
 // ==================== PRÉSENCES ====================

@@ -1,11 +1,15 @@
 package com.university.attendance.repository;
 
-import com.university.attendance.model.GroupeEtudiant;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.university.attendance.model.GroupeEtudiant;
+import com.university.attendance.model.User;
 
 /**
  * Repository pour l'entité GroupeEtudiant
@@ -42,4 +46,19 @@ public interface GroupeEtudiantRepository extends JpaRepository<GroupeEtudiant, 
      * Supprime toutes les affectations d'un groupe
      */
     void deleteByGroupeId(Long groupeId);
+
+
+
+    /**
+     * Trouve tous les étudiants d'un groupe spécifique
+     */
+    @Query("SELECT ge.etudiant FROM GroupeEtudiant ge WHERE ge.groupe.id = :groupeId")
+    List<User> findEtudiantsByGroupeId(@Param("groupeId") Long groupeId);
+
+    /**
+     * Trouve tous les étudiants d'une formation (pour les CM)
+     */
+    @Query("SELECT u FROM User u WHERE u.formation.id = :formationId AND u.role = 'ETUDIANT' AND u.actif = true")
+    List<User> findEtudiantsByFormationId(@Param("formationId") Long formationId);
+    
 }
