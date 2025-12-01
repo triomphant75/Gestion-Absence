@@ -28,6 +28,10 @@ public class Seance {
     @Column(nullable = false)
     private TypeSeance typeSeance;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatutSeance statut = StatutSeance.PREVUE;
+
     // Pour les CM : null (toute la promotion)
     // Pour les TD/TP : groupe spécifique
     @ManyToOne
@@ -131,6 +135,14 @@ public class Seance {
 
     public void setTypeSeance(TypeSeance typeSeance) {
         this.typeSeance = typeSeance;
+    }
+
+    public StatutSeance getStatut() {
+        return statut;
+    }
+
+    public void setStatut(StatutSeance statut) {
+        this.statut = statut;
     }
 
     public Groupe getGroupe() {

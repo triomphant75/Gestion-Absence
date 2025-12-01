@@ -39,6 +39,16 @@ function DashboardEnseignant() {
     }
   }, [user]);
 
+  // Auto-dismiss messages after 6 seconds
+  useEffect(() => {
+    if (message.text) {
+      const timer = setTimeout(() => {
+        setMessage({ type: '', text: '' });
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   useEffect(() => {
     let interval;
     if (seanceActive && currentCode) {
@@ -75,9 +85,20 @@ function DashboardEnseignant() {
       setMessage({ type: 'success', text: 'Séance lancée avec succès!' });
       loadSeances();
     } catch (error) {
+      const errorMessage = error.response?.data || error.response?.data?.message || '';
+      let displayMessage = 'Erreur lors du lancement';
+
+      if (errorMessage.includes('déjà terminée')) {
+        displayMessage = '⚠️ Attention : Vous ne pouvez plus lancer cette séance car elle est déjà terminée.';
+      } else if (errorMessage.includes('annulée')) {
+        displayMessage = '⚠️ Attention : Vous ne pouvez plus lancer cette séance car elle a été annulée.';
+      } else if (errorMessage) {
+        displayMessage = errorMessage;
+      }
+
       setMessage({
-        type: 'error',
-        text: error.response?.data?.message || 'Erreur lors du lancement'
+        type: 'warning',
+        text: displayMessage
       });
     }
   };
@@ -133,6 +154,10 @@ function DashboardEnseignant() {
         <div className="active-seance-banner">
           <div className="banner-content">
             <h3>Séance en cours</h3>
+            <div className="seance-id-display">
+              <span className="id-label">ID Séance:</span>
+              <span className="id-value">{seanceActive}</span>
+            </div>
             <div className="code-display">
               <span className="code-label">Code de présence:</span>
               <span className="code-value">{currentCode}</span>
@@ -163,9 +188,21 @@ function DashboardEnseignant() {
             <div key={seance.id} className="seance-card">
               <div className="seance-header">
                 <h3>{seance.matiere?.nom}</h3>
-                <span className={`badge ${seance.seanceActive ? 'badge-success' : 'badge-secondary'}`}>
-                  {seance.seanceActive ? 'Active' : 'Terminée'}
-                </span>
+                <div className="seance-badges">
+                  <span className={`badge ${
+                    seance.statut === 'PREVUE' ? 'badge-info' :
+                    seance.statut === 'REPORTEE' ? 'badge-warning' :
+                    seance.statut === 'EN_COURS' ? 'badge-success' :
+                    seance.statut === 'TERMINEE' ? 'badge-secondary' :
+                    'badge-danger'
+                  }`}>
+                    {seance.statut === 'PREVUE' ? 'Prévue' :
+                     seance.statut === 'REPORTEE' ? 'Reportée' :
+                     seance.statut === 'EN_COURS' ? 'En cours' :
+                     seance.statut === 'TERMINEE' ? 'Terminée' :
+                     'Annulée'}
+                  </span>
+                </div>
               </div>
               <div className="seance-details">
                 <p><strong>Type:</strong> {seance.typeSeance}</p>
@@ -175,7 +212,7 @@ function DashboardEnseignant() {
                 {seance.groupe && <p><strong>Groupe:</strong> {seance.groupe.nom}</p>}
               </div>
               <div className="seance-actions">
-                {!seance.seanceActive && seanceActive !== seance.id && (
+                {(seance.statut === 'PREVUE' || seance.statut === 'REPORTEE') && (
                   <button
                     className="btn btn-primary"
                     onClick={() => startSeance(seance.id)}

@@ -192,6 +192,46 @@ public class SeanceController {
     }
 
     /**
+     * Met à jour une séance et la marque comme reportée
+     * PUT /api/seances/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateSeance(@PathVariable Long id, @Valid @RequestBody SeanceDTO seanceDTO) {
+        try {
+            Matiere matiere = matiereRepository.findById(seanceDTO.getMatiereId())
+                    .orElseThrow(() -> new RuntimeException("Matière non trouvée"));
+
+            User enseignant = userRepository.findById(seanceDTO.getEnseignantId())
+                    .orElseThrow(() -> new RuntimeException("Enseignant non trouvé"));
+
+            Seance seanceDetails = new Seance();
+            seanceDetails.setMatiere(matiere);
+            seanceDetails.setEnseignant(enseignant);
+
+            // Récupère le typeSeance depuis la matière
+            TypeSeance typeSeance = TypeSeance.valueOf(matiere.getTypeSeance());
+            seanceDetails.setTypeSeance(typeSeance);
+
+            seanceDetails.setDateDebut(seanceDTO.getDateDebut());
+            seanceDetails.setDateFin(seanceDTO.getDateFin());
+            seanceDetails.setSalle(seanceDTO.getSalle());
+            seanceDetails.setCommentaire(seanceDTO.getCommentaire());
+
+            // Pour les TD/TP, associe le groupe
+            if (typeSeance == TypeSeance.TD_TP && seanceDTO.getGroupeId() != null) {
+                Groupe groupe = groupeRepository.findById(seanceDTO.getGroupeId())
+                        .orElseThrow(() -> new RuntimeException("Groupe non trouvé"));
+                seanceDetails.setGroupe(groupe);
+            }
+
+            Seance updatedSeance = seanceService.updateSeance(id, seanceDetails);
+            return ResponseEntity.ok(updatedSeance);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
      * Annule une séance
      * PUT /api/seances/{id}/cancel
      */

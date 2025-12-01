@@ -62,6 +62,7 @@ export const seanceService = {
   getUpcoming: (enseignantId) => api.get(`/seances/enseignant/${enseignantId}/upcoming`),
   getByGroupe: (groupeId) => api.get(`/seances/groupe/${groupeId}`),
   create: (seance) => api.post('/seances', seance),
+  update: (id, seance) => api.put(`/seances/${id}`, seance),
   start: (id) => api.post(`/seances/${id}/start`),
   stop: (id) => api.post(`/seances/${id}/stop`),
   renewCode: (id) => api.post(`/seances/${id}/renew-code`),

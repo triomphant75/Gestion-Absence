@@ -42,7 +42,7 @@ public class SeanceService {
     }
 
     /**
-     * Met à jour une séance
+     * Met à jour une séance et change son statut en REPORTEE
      */
     public Seance updateSeance(Long id, Seance seanceDetails) {
         Seance seance = seanceRepository.findById(id)
@@ -56,6 +56,9 @@ public class SeanceService {
         seance.setDateFin(seanceDetails.getDateFin());
         seance.setSalle(seanceDetails.getSalle());
         seance.setCommentaire(seanceDetails.getCommentaire());
+
+        // Marquer la séance comme reportée lors de la modification
+        seance.setStatut(StatutSeance.REPORTEE);
 
         return seanceRepository.save(seance);
     }
@@ -80,6 +83,7 @@ public class SeanceService {
         seance.setCodeDynamique(code);
         seance.setCodeExpiration(LocalDateTime.now().plusSeconds(CODE_VALIDITY_SECONDS));
         seance.setSeanceActive(true);
+        seance.setStatut(StatutSeance.EN_COURS);
 
         return seanceRepository.save(seance);
     }
@@ -114,6 +118,7 @@ public class SeanceService {
         seance.setTerminee(true);
         seance.setCodeDynamique(null);
         seance.setCodeExpiration(null);
+        seance.setStatut(StatutSeance.TERMINEE);
 
         seanceRepository.save(seance);
 
@@ -241,6 +246,7 @@ public class SeanceService {
         seance.setSeanceActive(false);
         seance.setCodeDynamique(null);
         seance.setCodeExpiration(null);
+        seance.setStatut(StatutSeance.ANNULEE);
 
         return seanceRepository.save(seance);
     }

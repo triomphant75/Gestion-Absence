@@ -1816,12 +1816,14 @@ function DashboardAdmin() {
                   </td>
                   <td>
                     <span className={`badge ${
-                      s.statut === 'PROGRAMMEE' ? 'badge-secondary' :
-                      s.statut === 'EN_COURS' ? 'badge-warning' :
-                      s.statut === 'TERMINEE' ? 'badge-success' :
+                      s.statut === 'PREVUE' ? 'badge-info' :
+                      s.statut === 'REPORTEE' ? 'badge-warning' :
+                      s.statut === 'EN_COURS' ? 'badge-success' :
+                      s.statut === 'TERMINEE' ? 'badge-secondary' :
                       'badge-danger'
                     }`}>
-                      {s.statut === 'PROGRAMMEE' ? 'Programmée' :
+                      {s.statut === 'PREVUE' ? 'Prévue' :
+                       s.statut === 'REPORTEE' ? 'Reportée' :
                        s.statut === 'EN_COURS' ? 'En cours' :
                        s.statut === 'TERMINEE' ? 'Terminée' :
                        'Annulée'}
@@ -1829,7 +1831,7 @@ function DashboardAdmin() {
                   </td>
                   <td>
                     <div className="action-buttons-inline">
-                      {s.statut === 'PROGRAMMEE' && (
+                      {(s.statut === 'PREVUE' || s.statut === 'REPORTEE') && (
                         <>
                           <button
                             className="btn btn-sm btn-info"
@@ -1837,7 +1839,9 @@ function DashboardAdmin() {
                               ...s,
                               matiereId: s.matiere?.id,
                               enseignantId: s.enseignant?.id,
-                              groupeId: s.groupe?.id || ''
+                              groupeId: s.groupe?.id || '',
+                              dateDebut: s.dateDebut.slice(0, 16),
+                              dateFin: s.dateFin.slice(0, 16)
                             })}
                           >
                             Modifier
