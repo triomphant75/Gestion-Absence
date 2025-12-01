@@ -288,6 +288,59 @@
   color: #6c757d;
 }
 
+/* Depot justificatif controls */
+.depot-justificatif-list h3 {
+  margin-top: 0.5rem;
+}
+
+.depot-justificatif-card {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 1rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.depot-justificatif-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.file-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+  color: #fff;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.file-btn:hover { transform: translateY(-1px); }
+
+.file-name {
+  font-size: 0.9rem;
+  color: #6c757d;
+  min-width: 180px;
+}
+
+.justif-motif-input {
+  padding: 0.55rem 0.8rem;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  min-width: 240px;
+}
+
+.depot-justificatif-controls .btn {
+  padding: 0.55rem 0.9rem;
+}
+
 /* Badges */
 .badge {
   padding: 0.4rem 0.8rem;

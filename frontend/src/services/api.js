@@ -1,11 +1,10 @@
 import axios from 'axios';
 
 // Configuration de l'instance Axios
+// Do not set a global Content-Type header here — allow axios/browser
+// to set it per-request (important for FormData multipart uploads).
 const api = axios.create({
-  baseURL: 'http://localhost:8080/api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  baseURL: 'http://localhost:8080/api'
 });
 
 // Intercepteur pour ajouter le token JWT à chaque requête
@@ -103,9 +102,8 @@ export const justificatifService = {
     formData.append('absenceId', absenceId);
     formData.append('motif', motif);
     formData.append('fichier', fichier);
-    return api.post('/justificatifs', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    // Let the browser/axios set the Content-Type (including boundary)
+    return api.post('/justificatifs', formData);
   },
   valider: (id, validateurId, commentaire) =>
     api.put(`/justificatifs/${id}/valider?validateurId=${validateurId}${commentaire ? '&commentaire=' + commentaire : ''}`),

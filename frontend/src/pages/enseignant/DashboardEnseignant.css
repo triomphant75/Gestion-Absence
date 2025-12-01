@@ -515,6 +515,44 @@
   font-size: 1.1rem;
 }
 
+/* Présences: édition inline */
+.presence-select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  background: white;
+  font-size: 0.9rem;
+}
+
+.presence-comment-input {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid #ced4da;
+  width: 100%;
+  max-width: 240px;
+}
+
+.presence-save-btn {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.presence-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Make table inputs and buttons not overflow on small screens */
+@media (max-width: 768px) {
+  .presence-comment-input {
+    max-width: 140px;
+  }
+  .presence-save-btn {
+    padding: 0.35rem 0.5rem;
+  }
+}
+
 /* Barre de recherche */
 .search-box {
   flex: 0 1 300px;

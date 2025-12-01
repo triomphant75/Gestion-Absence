@@ -22,6 +22,8 @@ function DashboardEtudiant() {
   const [seanceId, setSeanceId] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [uploadFiles, setUploadFiles] = useState({});
+  const [uploadMotifs, setUploadMotifs] = useState({});
 
   const menuItems = [
     {
@@ -112,30 +114,38 @@ function DashboardEtudiant() {
     }
   };
 
-  const handleUploadJustificatif = async (absenceId, file, motif) => {
-    const formData = new FormData();
-    formData.append('fichier', file);
-    formData.append('etudiantId', user.id);
-    formData.append('absenceId', absenceId);
-    formData.append('motif', motif);
+  const handleUploadJustificatif = async (absenceId) => {
+    const file = uploadFiles[absenceId];
+    const motif = uploadMotifs[absenceId] || '';
+
+    if (!file) {
+      setMessage({ type: 'error', text: 'Veuillez sélectionner un fichier' });
+      return;
+    }
 
     try {
-      await justificatifService.create(formData);
+      setLoading(true);
+      await justificatifService.deposer(user.id, absenceId, motif, file);
       setMessage({ type: 'success', text: 'Justificatif déposé avec succès!' });
+      // reset inputs for this absence
+      setUploadFiles(prev => ({ ...prev, [absenceId]: null }));
+      setUploadMotifs(prev => ({ ...prev, [absenceId]: '' }));
       loadJustificatifs();
       loadAbsences();
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.message || 'Erreur lors du dépôt'
+        text: error.response?.data || error.response?.data?.message || 'Erreur lors du dépôt'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const getStatutBadgeClass = (statut) => {
     switch (statut) {
       case 'EN_ATTENTE': return 'badge-warning';
-      case 'VALIDE': return 'badge-success';
+      case 'ACCEPTE': return 'badge-success';
       case 'REFUSE': return 'badge-error';
       default: return '';
     }
@@ -285,6 +295,41 @@ function DashboardEtudiant() {
   const renderJustificatifsView = () => (
     <div className="justificatifs-section">
       <h2>Mes Justificatifs</h2>
+      {/* Déposer un justificatif pour une absence */}
+      {mesAbsences.length > 0 && (
+        <div className="depot-justificatif-list">
+          <h3>Déposer un justificatif</h3>
+          {mesAbsences.map((absence) => (
+            !absence.justificatif && (
+              <div key={absence.id} id={`upload-${absence.id}`} className="depot-justificatif-card">
+                <p><strong>{absence.seance?.matiere?.nom}</strong> - {new Date(absence.seance?.dateDebut).toLocaleString('fr-FR')}</p>
+                <div className="depot-justificatif-controls">
+                  <label className="file-btn">
+                    Choisir un fichier
+                    <input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      onChange={(e) => setUploadFiles(prev => ({ ...prev, [absence.id]: e.target.files[0] }))}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  <span className="file-name">{uploadFiles[absence.id]?.name || 'Aucun fichier choisi'}</span>
+                  <input
+                    type="text"
+                    className="justif-motif-input"
+                    placeholder="Motif (optionnel)"
+                    value={uploadMotifs[absence.id] || ''}
+                    onChange={(e) => setUploadMotifs(prev => ({ ...prev, [absence.id]: e.target.value }))}
+                  />
+                  <button className="btn btn-primary" onClick={() => handleUploadJustificatif(absence.id)} disabled={loading}>
+                    {loading ? 'Envoi...' : 'Déposer'}
+                  </button>
+                </div>
+              </div>
+            )
+          ))}
+        </div>
+      )}
       {mesJustificatifs.length > 0 ? (
         <div className="justificatifs-list">
           {mesJustificatifs.map((justif) => (
@@ -297,12 +342,12 @@ function DashboardEtudiant() {
               </div>
               <div className="justificatif-details">
                 <p><strong>Motif:</strong> {justif.motif}</p>
-                <p><strong>Déposé le:</strong> {new Date(justif.dateDepot).toLocaleDateString('fr-FR')}</p>
+                <p><strong>Déposé le:</strong> {justif.createdAt ? new Date(justif.createdAt).toLocaleDateString('fr-FR') : '-'}</p>
                 {justif.dateValidation && (
                   <p><strong>Validé le:</strong> {new Date(justif.dateValidation).toLocaleDateString('fr-FR')}</p>
                 )}
-                {justif.commentaireValidateur && (
-                  <p><strong>Commentaire:</strong> {justif.commentaireValidateur}</p>
+                {justif.commentaireValidation && (
+                  <p><strong>Commentaire:</strong> {justif.commentaireValidation}</p>
                 )}
               </div>
             </div>

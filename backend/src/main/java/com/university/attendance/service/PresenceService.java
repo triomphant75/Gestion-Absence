@@ -113,9 +113,25 @@ public class PresenceService {
         Presence presence = presenceRepository.findById(presenceId)
                 .orElseThrow(() -> new RuntimeException("Présence non trouvée"));
 
+        // Interdire la modification si la séance est déjà terminée
+        if (presence.getSeance() != null && presence.getSeance().getDateFin() != null) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            if (now.isAfter(presence.getSeance().getDateFin())) {
+                throw new RuntimeException("La séance est terminée — modification non autorisée");
+            }
+        }
+
         presence.setStatut(nouveauStatut);
         presence.setCommentaire(commentaire);
         presence.setModificationManuelle(true);
+
+        // Si l'enseignant marque l'étudiant comme présent ou en retard, enregistrer l'heure de validation
+        if (nouveauStatut == StatutPresence.PRESENT || nouveauStatut == StatutPresence.RETARD) {
+            presence.setHeureValidation(java.time.LocalDateTime.now());
+        } else {
+            // sinon, effacer l'heure de validation
+            presence.setHeureValidation(null);
+        }
 
         Presence updatedPresence = presenceRepository.save(presence);
 
@@ -131,6 +147,14 @@ public class PresenceService {
     public Presence createPresenceManuelle(Long seanceId, Long etudiantId, StatutPresence statut) {
         Seance seance = seanceRepository.findById(seanceId)
                 .orElseThrow(() -> new RuntimeException("Séance non trouvée"));
+
+        // Interdire la création/modification manuelle si la séance est terminée
+        if (seance.getDateFin() != null) {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            if (now.isAfter(seance.getDateFin())) {
+                throw new RuntimeException("La séance est terminée — action non autorisée");
+            }
+        }
 
         User etudiant = userRepository.findById(etudiantId)
                 .orElseThrow(() -> new RuntimeException("Étudiant non trouvé"));
@@ -218,9 +242,12 @@ public class PresenceService {
                 .filter(p -> p.getStatut() == StatutPresence.RETARD)
                 .count();
 
-        Double tauxAbsence = presenceRepository.calculateTauxAbsence(etudiantId);
-        if (tauxAbsence == null) {
+        // Avoid division by zero at the DB level: compute taux locally using counts
+        Double tauxAbsence;
+        if (totalSeances == 0) {
             tauxAbsence = 0.0;
+        } else {
+            tauxAbsence = (totalAbsences * 100.0) / (double) totalSeances;
         }
 
         Long nombreAvertissements = avertissementRepository.countByEtudiantId(etudiantId);

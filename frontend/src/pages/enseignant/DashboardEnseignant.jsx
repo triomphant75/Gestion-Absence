@@ -16,6 +16,8 @@ function DashboardEnseignant() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [presences, setPresences] = useState([]);
+  const [presenceEdits, setPresenceEdits] = useState({});
+  const [presenceSaving, setPresenceSaving] = useState({});
   const [selectedSeanceForPresences, setSelectedSeanceForPresences] = useState(null);
   
   //états pour la liste des étudiants
@@ -176,6 +178,33 @@ function DashboardEnseignant() {
     }
   };
 
+  // Sauvegarde les modifications apportées à une présence (statut/commentaire)
+  const savePresenceChange = async (presenceId) => {
+    const edit = presenceEdits[presenceId] || {};
+    const statut = edit.statut || presences.find(p => p.id === presenceId)?.statut;
+    const commentaire = edit.commentaire || '';
+
+    try {
+      setPresenceSaving(prev => ({ ...prev, [presenceId]: true }));
+      await presenceService.update(presenceId, statut, commentaire);
+      setMessage({ type: 'success', text: 'Présence mise à jour avec succès' });
+      // Recharger la liste des présences pour la séance sélectionnée
+      if (selectedSeanceForPresences) {
+        await viewPresences(selectedSeanceForPresences.id);
+      }
+      // nettoyer l'édition locale
+      setPresenceEdits(prev => {
+        const next = { ...prev };
+        delete next[presenceId];
+        return next;
+      });
+    } catch (error) {
+      setMessage({ type: 'error', text: error.response?.data || 'Erreur lors de la mise à jour' });
+    } finally {
+      setPresenceSaving(prev => ({ ...prev, [presenceId]: false }));
+    }
+  };
+
   // Filtrer les étudiants selon la recherche
   const filteredEtudiants = etudiantsInscrits.filter(etudiant => {
     const searchLower = searchTerm.toLowerCase();
@@ -302,6 +331,13 @@ function DashboardEnseignant() {
         </div>
       )}
 
+      {/* Ne pas autoriser les modifications si la séance est passée */}
+      {selectedSeanceForPresences && (new Date(selectedSeanceForPresences.dateFin).getTime() < new Date().getTime()) && (
+        <div className="message warning">
+          La séance est terminée — les statuts ne peuvent plus être modifiés.
+        </div>
+      )}
+
       {message.text && (
         <div className={`message ${message.type}`}>
           {message.text}
@@ -329,25 +365,54 @@ function DashboardEnseignant() {
                   </td>
                   <td>{presence.etudiant?.numeroEtudiant}</td>
                   <td>
-                    <span className={`badge ${
-                      presence.statut === 'PRESENT' ? 'badge-success' :
-                      presence.statut === 'ABSENT' ? 'badge-danger' :
-                      presence.statut === 'RETARD' ? 'badge-warning' :
-                      'badge-info'
-                    }`}>
-                      {presence.statut === 'PRESENT' ? 'Présent' :
-                       presence.statut === 'ABSENT' ? 'Absent' :
-                       presence.statut === 'RETARD' ? 'Retard' :
-                       'Justifié'}
-                    </span>
+                    <div className="presence-row">
+                      <select
+                        className="presence-select"
+                        value={presenceEdits[presence.id]?.statut || presence.statut}
+                        onChange={(e) => {
+                          const s = e.target.value;
+                          setPresenceEdits(prev => ({
+                            ...prev,
+                            [presence.id]: {
+                              ...(prev[presence.id] || {}),
+                              statut: s
+                            }
+                          }));
+                        }}
+                        disabled={selectedSeanceForPresences && (new Date(selectedSeanceForPresences.dateFin).getTime() < new Date().getTime())}
+                      >
+                        <option value="PRESENT">Présent</option>
+                        <option value="ABSENT">Absent</option>
+                        <option value="RETARD">Retard</option>
+                      </select>
+                      <button
+                        className="btn btn-sm btn-primary presence-save-btn"
+                        onClick={() => savePresenceChange(presence.id)}
+                        disabled={!!presenceSaving[presence.id] || (selectedSeanceForPresences && (new Date(selectedSeanceForPresences.dateFin).getTime() < new Date().getTime()))}
+                      >
+                        {presenceSaving[presence.id] ? 'Enregistrement...' : 'Enregistrer'}
+                      </button>
+                    </div>
                   </td>
                   <td>
-                    {presence.heurePointage ?
-                      new Date(presence.heurePointage).toLocaleTimeString('fr-FR') :
-                      '-'
-                    }
+                    {presence.heureValidation ? new Date(presence.heureValidation).toLocaleTimeString('fr-FR') : '-'}
                   </td>
-                  <td>{presence.commentaire || '-'}</td>
+                  <td>
+                    <input
+                      className="presence-comment-input"
+                      type="text"
+                      value={presenceEdits[presence.id]?.commentaire ?? presence.commentaire ?? ''}
+                      placeholder="Commentaire..."
+                      onChange={(e) => setPresenceEdits(prev => ({
+                        ...prev,
+                        [presence.id]: {
+                          ...(prev[presence.id] || {}),
+                          commentaire: e.target.value
+                        }
+                      }))}
+                      disabled={selectedSeanceForPresences && (new Date(selectedSeanceForPresences.dateFin).getTime() < new Date().getTime())}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
