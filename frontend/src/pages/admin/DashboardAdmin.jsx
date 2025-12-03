@@ -72,6 +72,7 @@ function DashboardAdmin() {
     coefficient: 1,
     heuresTotal: 0,
     seuilAbsences: 3,
+    enseignantId: '',
     actif: true
   });
 
@@ -440,19 +441,34 @@ function DashboardAdmin() {
         return;
       }
 
+      if (heuresTotalInt < 4 || heuresTotalInt > 32) {
+        setMessage({ type: 'error', text: 'Le nombre d\'heures doit être compris entre 4 et 32' });
+        setLoading(false);
+        return;
+      }
+
       if (isNaN(seuilAbsencesInt) || seuilAbsencesInt < 0) {
         setMessage({ type: 'error', text: 'Seuil d\'absences invalide' });
         setLoading(false);
         return;
       }
 
-      await matiereService.create({
+      // L'enseignant est obligatoire
+      if (!newMatiere.enseignantId || newMatiere.enseignantId === '') {
+        setMessage({ type: 'error', text: 'Veuillez sélectionner un enseignant pour la matière' });
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
         ...newMatiere,
         formationId: formationIdInt,
         coefficient: coefficientFloat,
         heuresTotal: heuresTotalInt,
         seuilAbsences: seuilAbsencesInt
-      });
+      };
+      payload.enseignantId = parseInt(newMatiere.enseignantId);
+      await matiereService.create(payload);
       setMessage({ type: 'success', text: 'Matière créée avec succès!' });
       setNewMatiere({
         nom: '',
@@ -463,6 +479,7 @@ function DashboardAdmin() {
         coefficient: 1,
         heuresTotal: 0,
         seuilAbsences: 3,
+        enseignantId: '',
         actif: true
       });
       loadMatieres();
@@ -482,13 +499,29 @@ function DashboardAdmin() {
     setMessage({ type: '', text: '' });
 
     try {
-      await matiereService.update(editingMatiere.id, {
+      // L'enseignant est obligatoire
+      if (!editingMatiere.enseignantId || editingMatiere.enseignantId === '') {
+        setMessage({ type: 'error', text: 'Veuillez sélectionner un enseignant pour la matière' });
+        setLoading(false);
+        return;
+      }
+
+      const heuresUpd = parseInt(editingMatiere.heuresTotal);
+      if (isNaN(heuresUpd) || heuresUpd < 4 || heuresUpd > 32) {
+        setMessage({ type: 'error', text: 'Le nombre d\'heures doit être compris entre 4 et 32' });
+        setLoading(false);
+        return;
+      }
+
+      const payload = {
         ...editingMatiere,
         formationId: parseInt(editingMatiere.formationId),
         coefficient: parseFloat(editingMatiere.coefficient),
-        heuresTotal: parseInt(editingMatiere.heuresTotal),
-        seuilAbsences: parseInt(editingMatiere.seuilAbsences)
-      });
+        heuresTotal: heuresUpd,
+        seuilAbsences: parseInt(editingMatiere.seuilAbsences),
+        enseignantId: parseInt(editingMatiere.enseignantId)
+      };
+      await matiereService.update(editingMatiere.id, payload);
       setMessage({ type: 'success', text: 'Matière modifiée avec succès!' });
       setEditingMatiere(null);
       loadMatieres();
@@ -810,7 +843,8 @@ function DashboardAdmin() {
     const motif = window.prompt('Motif de l\'annulation:');
     if (motif) {
       try {
-        await seanceService.cancel(id, motif);
+        // Backend cancel endpoint does not accept a motif parameter, call without motif
+        await seanceService.cancel(id);
         setMessage({ type: 'success', text: 'Séance annulée!' });
         loadSeances();
       } catch (error) {
@@ -1246,7 +1280,7 @@ function DashboardAdmin() {
                 <label>Code Matière *</label>
                 <input
                   type="text"
-                  value={newMatiere.code}
+                  value={newMatiere.code || ''}
                   onChange={(e) => setNewMatiere({ ...newMatiere, code: e.target.value.toUpperCase() })}
                   placeholder="Ex: INF301"
                   required
@@ -1299,6 +1333,19 @@ function DashboardAdmin() {
                   ))}
                 </select>
               </div>
+                <div className="form-group">
+                  <label>Enseignant *</label>
+                  <select
+                    value={newMatiere.enseignantId}
+                    onChange={(e) => setNewMatiere({ ...newMatiere, enseignantId: e.target.value })}
+                    required
+                  >
+                    <option value="">Sélectionner un enseignant</option>
+                    {enseignants.map((ens) => (
+                      <option key={ens.id} value={ens.id}>{ens.prenom} {ens.nom}</option>
+                    ))}
+                  </select>
+                </div>
             </div>
 
             <div className="form-row">
@@ -1355,7 +1402,7 @@ function DashboardAdmin() {
                 <label>Code Matière *</label>
                 <input
                   type="text"
-                  value={editingMatiere.code}
+                  value={editingMatiere?.code || ''}
                   onChange={(e) => setEditingMatiere({ ...editingMatiere, code: e.target.value.toUpperCase() })}
                   required
                 />
@@ -1405,6 +1452,19 @@ function DashboardAdmin() {
                   ))}
                 </select>
               </div>
+                <div className="form-group">
+                  <label>Enseignant *</label>
+                  <select
+                    value={editingMatiere.enseignantId || ''}
+                    onChange={(e) => setEditingMatiere({ ...editingMatiere, enseignantId: e.target.value })}
+                    required
+                  >
+                    <option value="">Sélectionner un enseignant</option>
+                    {enseignants.map((ens) => (
+                      <option key={ens.id} value={ens.id}>{ens.prenom} {ens.nom}</option>
+                    ))}
+                  </select>
+                </div>
             </div>
 
             <div className="form-row">
@@ -1498,7 +1558,7 @@ function DashboardAdmin() {
                   <div className="action-buttons-inline">
                     <button
                       className="btn btn-sm btn-info"
-                      onClick={() => setEditingMatiere({ ...m, formationId: m.formation?.id })}
+                      onClick={() => setEditingMatiere({ ...m, formationId: m.formation?.id, enseignantId: m.enseignant?.id })}
                     >
                       Modifier
                     </button>
@@ -1553,7 +1613,11 @@ function DashboardAdmin() {
                   <label>Matière *</label>
                   <select
                     value={newSeance.matiereId}
-                    onChange={(e) => setNewSeance({ ...newSeance, matiereId: e.target.value, groupeId: '' })}
+                    onChange={(e) => {
+                      const mid = e.target.value;
+                      const mat = matieres.find(m => m.id === parseInt(mid));
+                      setNewSeance({ ...newSeance, matiereId: mid, groupeId: '', enseignantId: mat?.enseignant?.id || '' });
+                    }}
                     required
                   >
                     <option value="">Sélectionner une matière</option>
@@ -1570,6 +1634,7 @@ function DashboardAdmin() {
                     value={newSeance.enseignantId}
                     onChange={(e) => setNewSeance({ ...newSeance, enseignantId: e.target.value })}
                     required
+                    disabled={!!matieres.find(m => m.id === parseInt(newSeance.matiereId))?.enseignant}
                   >
                     <option value="">Sélectionner un enseignant</option>
                     {enseignants.map((ens) => (
@@ -1665,7 +1730,11 @@ function DashboardAdmin() {
                   <label>Matière *</label>
                   <select
                     value={editingSeance.matiereId}
-                    onChange={(e) => setEditingSeance({ ...editingSeance, matiereId: e.target.value, groupeId: '' })}
+                    onChange={(e) => {
+                      const mid = e.target.value;
+                      const mat = matieres.find(m => m.id === parseInt(mid));
+                      setEditingSeance({ ...editingSeance, matiereId: mid, groupeId: '', enseignantId: mat?.enseignant?.id || '' });
+                    }}
                     required
                   >
                     <option value="">Sélectionner une matière</option>
@@ -1682,6 +1751,7 @@ function DashboardAdmin() {
                     value={editingSeance.enseignantId}
                     onChange={(e) => setEditingSeance({ ...editingSeance, enseignantId: e.target.value })}
                     required
+                    disabled={!!matieres.find(m => m.id === parseInt(editingSeance.matiereId))?.enseignant}
                   >
                     <option value="">Sélectionner un enseignant</option>
                     {enseignants.map((ens) => (

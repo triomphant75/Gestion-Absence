@@ -309,19 +309,36 @@
 }
 
 .file-btn {
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.9rem;
-  background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
-  color: #fff;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
+  padding: 0.5rem 0.9rem !important;
+  background: #ff9800 !important;
+  color: #fff !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
   user-select: none;
+  border: none !important;
+  min-height: 40px !important;
+  min-width: 140px !important;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
-.file-btn:hover { transform: translateY(-1px); }
+.file-btn:hover { 
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(255, 152, 0, 0.22);
+}
+
+.file-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
 
 .file-name {
   font-size: 0.9rem;

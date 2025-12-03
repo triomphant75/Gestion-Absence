@@ -9,6 +9,8 @@ import com.university.attendance.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Optional;
@@ -39,12 +41,29 @@ public class GroupeEtudiantService {
         Groupe groupe = groupeRepository.findById(groupeId)
                 .orElseThrow(() -> new RuntimeException("Groupe non trouvé avec l'id : " + groupeId));
 
-        // Vérifie si l'affectation existe déjà
-        if (groupeEtudiantRepository.existsByEtudiantIdAndGroupeId(etudiantId, groupeId)) {
-            throw new RuntimeException("L'étudiant est déjà affecté à ce groupe");
+        // Vérifie si l'étudiant est déjà affecté à un (autre) groupe
+        List<GroupeEtudiant> affectationsExistantes = groupeEtudiantRepository.findByEtudiantId(etudiantId);
+        if (!affectationsExistantes.isEmpty()) {
+            boolean dejaDansMemeGroupe = affectationsExistantes.stream()
+                    .anyMatch(ge -> ge.getGroupe() != null && ge.getGroupe().getId().equals(groupeId));
+            if (dejaDansMemeGroupe) {
+                throw new RuntimeException("L'étudiant est déjà affecté à ce groupe");
+            }
+            // S'il est dans un autre groupe, refuser l'affectation pour éviter deux groupes simultanés
+            Long autreGroupeId = affectationsExistantes.get(0).getGroupe() != null
+                    ? affectationsExistantes.get(0).getGroupe().getId()
+                    : null;
+            throw new RuntimeException("L'étudiant est déjà affecté à un autre groupe (id=" + autreGroupeId + "). Retirez d'abord l'affectation précédente avant d'en ajouter une nouvelle.");
         }
 
         GroupeEtudiant groupeEtudiant = new GroupeEtudiant(etudiant, groupe);
+        // Vérifie la capacité du groupe
+        int currentSize = groupeEtudiantRepository.findByGroupeId(groupeId).size();
+        Integer capaciteMax = groupe.getCapaciteMax() != null ? groupe.getCapaciteMax() : 0;
+        if (capaciteMax > 0 && currentSize >= capaciteMax) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "La capacité maximale du groupe est atteinte");
+        }
+
         return groupeEtudiantRepository.save(groupeEtudiant);
     }
 

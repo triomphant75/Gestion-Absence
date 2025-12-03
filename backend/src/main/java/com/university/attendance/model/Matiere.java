@@ -1,5 +1,6 @@
 package com.university.attendance.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 
@@ -27,6 +28,11 @@ public class Matiere {
     @ManyToOne
     @JoinColumn(name = "formation_id", nullable = false)
     private Formation formation;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "enseignant_id")
+    @JsonIgnoreProperties({"motDePasse", "formation", "departement"})
+    private User enseignant;
 
     // Type de séance: CM (Cours Magistral) ou TD_TP (Travaux Dirigés/Pratiques)
     @Column(nullable = false, length = 10)
@@ -138,5 +144,13 @@ public class Matiere {
 
     public void setActif(Boolean actif) {
         this.actif = actif;
+    }
+
+    public User getEnseignant() {
+        return enseignant;
+    }
+
+    public void setEnseignant(User enseignant) {
+        this.enseignant = enseignant;
     }
 }

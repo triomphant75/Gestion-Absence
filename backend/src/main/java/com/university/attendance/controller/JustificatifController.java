@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -49,7 +50,11 @@ public class JustificatifController {
         } catch (IOException e) {
             return ResponseEntity.badRequest().body("Erreur lors de l'upload du fichier : " + e.getMessage());
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("existe déjà pour cette absence")) {
+                return ResponseEntity.status(409).body("Un justificatif a déjà été déposé pour cette absence. Vous ne pouvez en déposer qu'un seul.");
+            }
+            return ResponseEntity.badRequest().body(msg);
         }
     }
 
@@ -101,8 +106,16 @@ public class JustificatifController {
             Resource resource = new UrlResource(filePath.toUri());
 
             if (resource.exists() && resource.isReadable()) {
+                // Détecte le type MIME du fichier
+                String contentType = null;
+                try {
+                    contentType = Files.probeContentType(filePath);
+                } catch (IOException ignored) {}
+                if (contentType == null) {
+                    contentType = "application/octet-stream";
+                }
                 return ResponseEntity.ok()
-                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .contentType(MediaType.parseMediaType(contentType))
                         .header(HttpHeaders.CONTENT_DISPOSITION,
                                 "attachment; filename=\"" + justificatif.getFichierPath() + "\"")
                         .body(resource);
@@ -150,6 +163,15 @@ public class JustificatifController {
     @GetMapping
     public ResponseEntity<List<Justificatif>> getAllJustificatifs() {
         return ResponseEntity.ok(justificatifService.getAllJustificatifs());
+    }
+
+    /**
+     * Obtient tous les justificatifs traités par un validateur (chef)
+     * GET /api/justificatifs/traites/{validateurId}
+     */
+    @GetMapping("/traites/{validateurId}")
+    public ResponseEntity<List<Justificatif>> getJustificatifsTraitesByValidateur(@PathVariable Long validateurId) {
+        return ResponseEntity.ok(justificatifService.getJustificatifsTraitesParValidateur(validateurId));
     }
 
     /**

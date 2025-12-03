@@ -6,6 +6,9 @@ import com.university.attendance.model.Matiere;
 import com.university.attendance.repository.FormationRepository;
 import com.university.attendance.repository.MatiereRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.university.attendance.repository.UserRepository;
+import com.university.attendance.model.User;
+import com.university.attendance.model.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +28,9 @@ public class MatiereService {
     @Autowired
     private FormationRepository formationRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     /**
      * Crée une nouvelle matière à partir d'un DTO
      */
@@ -40,12 +46,33 @@ public class MatiereService {
         // Crée l'entité Matiere
         Matiere matiere = new Matiere();
         matiere.setNom(matiereDTO.getNom());
-        matiere.setCode(matiereDTO.getCode());
+        // Assurer que le code est bien défini lors de la création
+        if (matiereDTO.getCode() != null) {
+            matiere.setCode(matiereDTO.getCode().toUpperCase());
+        }
+        // L'enseignant est obligatoire pour la création d'une matière
+        if (matiereDTO.getEnseignantId() == null) {
+            throw new RuntimeException("Un enseignant doit être associé à la matière");
+        }
+        User enseignant = userRepository.findById(matiereDTO.getEnseignantId())
+                .orElseThrow(() -> new RuntimeException("Enseignant non trouvé avec l'id : " + matiereDTO.getEnseignantId()));
+        if (enseignant.getRole() != Role.ENSEIGNANT) {
+            throw new RuntimeException("L'utilisateur fourni n'est pas un enseignant");
+        }
+        matiere.setEnseignant(enseignant);
         matiere.setDescription(matiereDTO.getDescription());
         matiere.setFormation(formation);  // Assigne l'objet Formation
         matiere.setTypeSeance(matiereDTO.getTypeSeance() != null ? matiereDTO.getTypeSeance() : "CM");
         matiere.setCoefficient(matiereDTO.getCoefficient() != null ? matiereDTO.getCoefficient() : 1.0);
-        matiere.setHeuresTotal(matiereDTO.getHeuresTotal() != null ? matiereDTO.getHeuresTotal() : 0);
+        // Valider heuresTotal (doit être entre 4 et 32)
+        Integer heuresTotal = matiereDTO.getHeuresTotal();
+        if (heuresTotal == null) {
+            throw new RuntimeException("Le nombre d'heures total doit être renseigné (entre 4 et 32)");
+        }
+        if (heuresTotal < 4 || heuresTotal > 32) {
+            throw new RuntimeException("Le nombre d'heures total doit être compris entre 4 et 32");
+        }
+        matiere.setHeuresTotal(heuresTotal);
         matiere.setSeuilAbsences(matiereDTO.getSeuilAbsences() != null ? matiereDTO.getSeuilAbsences() : 3);
         matiere.setActif(matiereDTO.getActif() != null ? matiereDTO.getActif() : true);
 
@@ -69,9 +96,28 @@ public class MatiereService {
         matiere.setFormation(formation);  // Assigne l'objet Formation
         matiere.setTypeSeance(matiereDTO.getTypeSeance());
         matiere.setCoefficient(matiereDTO.getCoefficient());
-        matiere.setHeuresTotal(matiereDTO.getHeuresTotal());
+        // Valider heuresTotal (doit être entre 4 et 32)
+        Integer heuresTotalUpd = matiereDTO.getHeuresTotal();
+        if (heuresTotalUpd == null) {
+            throw new RuntimeException("Le nombre d'heures total doit être renseigné (entre 4 et 32)");
+        }
+        if (heuresTotalUpd < 4 || heuresTotalUpd > 32) {
+            throw new RuntimeException("Le nombre d'heures total doit être compris entre 4 et 32");
+        }
+        matiere.setHeuresTotal(heuresTotalUpd);
         matiere.setSeuilAbsences(matiereDTO.getSeuilAbsences());
         matiere.setActif(matiereDTO.getActif());
+
+        // L'enseignant est obligatoire pour la matière (mise à jour)
+        if (matiereDTO.getEnseignantId() == null) {
+            throw new RuntimeException("Un enseignant doit être associé à la matière");
+        }
+        User enseignantUpdate = userRepository.findById(matiereDTO.getEnseignantId())
+                .orElseThrow(() -> new RuntimeException("Enseignant non trouvé avec l'id : " + matiereDTO.getEnseignantId()));
+        if (enseignantUpdate.getRole() != Role.ENSEIGNANT) {
+            throw new RuntimeException("L'utilisateur fourni n'est pas un enseignant");
+        }
+        matiere.setEnseignant(enseignantUpdate);
 
         return matiereRepository.save(matiere);
     }

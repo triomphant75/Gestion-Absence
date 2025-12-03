@@ -13,6 +13,7 @@ public class MatiereDTO {
     private Integer heuresTotal;
     private Integer seuilAbsences;
     private Boolean actif;
+    private Long enseignantId;
 
     // Constructeurs
     public MatiereDTO() {
@@ -97,5 +98,13 @@ public class MatiereDTO {
 
     public void setActif(Boolean actif) {
         this.actif = actif;
+    }
+
+    public Long getEnseignantId() {
+        return enseignantId;
+    }
+
+    public void setEnseignantId(Long enseignantId) {
+        this.enseignantId = enseignantId;
     }
 }

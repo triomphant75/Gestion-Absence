@@ -5,7 +5,8 @@ import {
   MdDescription,
   MdWarning,
   MdBarChart,
-  MdPeople
+  MdPeople,
+  MdHistory
 } from 'react-icons/md';
 import { justificatifService, avertissementService, userService, presenceService } from '../../services/api';
 import './DashboardChefDepartement.css';
@@ -16,10 +17,53 @@ function DashboardChefDepartement() {
   const [justificatifs, setJustificatifs] = useState([]);
   const [avertissements, setAvertissements] = useState([]);
   const [etudiants, setEtudiants] = useState([]);
+  const [traitements, setTraitements] = useState([]);
   const [selectedJustif, setSelectedJustif] = useState(null);
   const [commentaire, setCommentaire] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Utilise le vrai nom du fichier stocké côté backend
+  const justificatifNom = (justif) => {
+    return justif.fichierPath || `justificatif-${justif.id}`;
+  };
+
+  const handleViewJustificatif = async (justifId, filename) => {
+    try {
+      setLoading(true);
+      const response = await justificatifService.download(justifId);
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      console.error('Erreur ouverture justificatif:', error);
+      setMessage({ type: 'error', text: 'Impossible d\'ouvrir le justificatif' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadJustificatif = async (justifId, filename) => {
+    try {
+      setLoading(true);
+      const response = await justificatifService.download(justifId);
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || `justificatif-${justifId}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      console.error('Erreur téléchargement justificatif:', error);
+      setMessage({ type: 'error', text: 'Impossible de télécharger le justificatif' });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const menuItems = [
     {
@@ -27,6 +71,12 @@ function DashboardChefDepartement() {
       label: 'Justificatifs',
       active: activeView === 'justificatifs',
       onClick: () => setActiveView('justificatifs')
+    },
+    {
+      icon: <MdHistory />,
+      label: 'Historique',
+      active: activeView === 'historique',
+      onClick: () => setActiveView('historique')
     },
     {
       icon: <MdWarning />,
@@ -53,8 +103,18 @@ function DashboardChefDepartement() {
       loadJustificatifs();
       loadAvertissements();
       loadEtudiants();
+      loadTraitements();
     }
   }, [user]);
+
+  const loadTraitements = async () => {
+    try {
+      const response = await justificatifService.getTraitesByValidateur(user.id);
+      setTraitements(response.data);
+    } catch (error) {
+      console.error('Erreur chargement historique de traitements:', error);
+    }
+  };
 
   const loadJustificatifs = async () => {
     try {
@@ -207,11 +267,85 @@ function DashboardChefDepartement() {
                   </button>
                 )}
               </div>
+              <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => handleViewJustificatif(justif.id, justificatifNom(justif))}
+                  disabled={loading}
+                >
+                  Voir
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => handleDownloadJustificatif(justif.id, justificatifNom(justif))}
+                  disabled={loading}
+                  style={{ background: '#6c757d', color: '#fff' }}
+                >
+                  Télécharger
+                </button>
+              </div>
             </div>
           ))}
         </div>
       ) : (
         <p className="no-data">Aucun justificatif en attente</p>
+      )}
+    </div>
+  );
+
+  const renderHistoriqueView = () => (
+    <div className="historique-section">
+      <h2>Historique des Traitements</h2>
+
+      {traitements.length > 0 ? (
+        <div className="justificatifs-list">
+          {traitements.map((justif) => (
+            <div key={justif.id} className="justificatif-card">
+              <div className="justificatif-header">
+                <h3>Justificatif #{justif.id}</h3>
+                <span className={`badge ${getStatutBadgeClass(justif.statut)}`}>
+                  {justif.statut}
+                </span>
+              </div>
+              <div className="justificatif-details">
+                <p><strong>Étudiant:</strong> {justif.etudiant?.nom} {justif.etudiant?.prenom}</p>
+                <p><strong>Motif:</strong> {justif.motif}</p>
+                <p><strong>Déposé le:</strong> {justif.dateDepot ? new Date(justif.dateDepot).toLocaleDateString('fr-FR') : '-'}</p>
+                {justif.dateValidation && (
+                  <p><strong>Traitée le:</strong> {new Date(justif.dateValidation).toLocaleDateString('fr-FR')}</p>
+                )}
+                {justif.commentaireValidation && (
+                  <p><strong>Commentaire:</strong> {justif.commentaireValidation}</p>
+                )}
+                {justif.absence && (
+                  <>
+                    <p><strong>Absence du:</strong> {new Date(justif.absence.seance?.dateDebut).toLocaleDateString('fr-FR')}</p>
+                    <p><strong>Matière:</strong> {justif.absence.seance?.matiere?.nom}</p>
+                  </>
+                )}
+                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => handleViewJustificatif(justif.id, justificatifNom(justif))}
+                    disabled={loading}
+                  >
+                    Voir
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={() => handleDownloadJustificatif(justif.id, justificatifNom(justif))}
+                    disabled={loading}
+                    style={{ background: '#6c757d', color: '#fff' }}
+                  >
+                    Télécharger
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="no-data">Aucun traitement réalisé</p>
       )}
     </div>
   );
@@ -336,6 +470,7 @@ function DashboardChefDepartement() {
         </div>
 
         {activeView === 'justificatifs' && renderJustificatifsView()}
+        {activeView === 'historique' && renderHistoriqueView()}
         {activeView === 'avertissements' && renderAvertissementsView()}
         {activeView === 'statistiques' && renderStatistiquesView()}
         {activeView === 'etudiants' && renderEtudiantsView()}

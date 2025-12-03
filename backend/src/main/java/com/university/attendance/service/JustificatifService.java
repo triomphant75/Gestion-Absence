@@ -172,6 +172,13 @@ public class JustificatifService {
     }
 
     /**
+     * Obtient tous les justificatifs traités par un validateur (chef)
+     */
+    public List<Justificatif> getJustificatifsTraitesParValidateur(Long validateurId) {
+        return justificatifRepository.findByValidateurIdOrderByDateValidationDesc(validateurId);
+    }
+
+    /**
      * Supprime un justificatif
      */
     public void deleteJustificatif(Long id) {

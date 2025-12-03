@@ -110,6 +110,7 @@ export const justificatifService = {
   refuser: (id, validateurId, commentaire) =>
     api.put(`/justificatifs/${id}/refuser?validateurId=${validateurId}${commentaire ? '&commentaire=' + commentaire : ''}`),
   download: (id) => api.get(`/justificatifs/${id}/download`, { responseType: 'blob' }),
+  getTraitesByValidateur: (validateurId) => api.get(`/justificatifs/traites/${validateurId}`),
   delete: (id) => api.delete(`/justificatifs/${id}`)
 };
 

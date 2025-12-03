@@ -21,9 +21,15 @@ function DashboardEtudiant() {
   const [seanceCode, setSeanceCode] = useState('');
   const [seanceId, setSeanceId] = useState('');
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [validateMessage, setValidateMessage] = useState({ type: '', text: '' });
+  const [justifMessage, setJustifMessage] = useState({ type: '', text: '' });
   const [uploadFiles, setUploadFiles] = useState({});
   const [uploadMotifs, setUploadMotifs] = useState({});
+
+  // Utilise le vrai nom du fichier stocké côté backend
+  const justificatifNom = (justif) => {
+    return justif.fichierPath || `justificatif-${justif.id}`;
+  };
 
   const menuItems = [
     {
@@ -91,7 +97,7 @@ function DashboardEtudiant() {
   const handleValidatePresence = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setMessage({ type: '', text: '' });
+    setValidateMessage({ type: '', text: '' });
 
     try {
       // Appel correct : (seanceId, code, userId)
@@ -100,12 +106,12 @@ function DashboardEtudiant() {
         seanceCode.toUpperCase(),
         user.id
       );
-      setMessage({ type: 'success', text: 'Présence validée avec succès!' });
+      setValidateMessage({ type: 'success', text: 'Présence validée avec succès!' });
       setSeanceCode('');
       setSeanceId('');
       loadStatistics();
     } catch (error) {
-      setMessage({
+      setValidateMessage({
         type: 'error',
         text: error.response?.data?.message || 'Code invalide ou expiré'
       });
@@ -119,24 +125,69 @@ function DashboardEtudiant() {
     const motif = uploadMotifs[absenceId] || '';
 
     if (!file) {
-      setMessage({ type: 'error', text: 'Veuillez sélectionner un fichier' });
+      setJustifMessage({ type: 'error', text: 'Veuillez sélectionner un fichier' });
       return;
     }
 
     try {
       setLoading(true);
       await justificatifService.deposer(user.id, absenceId, motif, file);
-      setMessage({ type: 'success', text: 'Justificatif déposé avec succès!' });
+      setJustifMessage({ type: 'success', text: 'Justificatif déposé avec succès!' });
       // reset inputs for this absence
       setUploadFiles(prev => ({ ...prev, [absenceId]: null }));
       setUploadMotifs(prev => ({ ...prev, [absenceId]: '' }));
       loadJustificatifs();
       loadAbsences();
     } catch (error) {
-      setMessage({
+      let msg = 'Erreur lors du dépôt';
+      if (error.response?.status === 409) {
+        msg = error.response.data || 'Un justificatif a déjà été déposé pour cette absence.';
+      } else if (error.response?.data) {
+        msg = error.response.data;
+      }
+      setJustifMessage({
         type: 'error',
-        text: error.response?.data || error.response?.data?.message || 'Erreur lors du dépôt'
+        text: msg
       });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewJustificatif = async (justifId, filename) => {
+    try {
+      setLoading(true);
+      const response = await justificatifService.download(justifId);
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      // Open in new tab to allow viewing (PDF or image)
+      window.open(url, '_blank');
+      // release object URL after some time
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      console.error('Erreur ouverture justificatif:', error);
+      setJustifMessage({ type: 'error', text: 'Impossible d\u00e9ouvrir le justificatif' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadJustificatif = async (justifId, filename) => {
+    try {
+      setLoading(true);
+      const response = await justificatifService.download(justifId);
+      const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || `justificatif-${justifId}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 10000);
+    } catch (error) {
+      console.error('Erreur téléchargement justificatif:', error);
+      setJustifMessage({ type: 'error', text: 'Impossible de télécharger le justificatif' });
     } finally {
       setLoading(false);
     }
@@ -182,9 +233,9 @@ function DashboardEtudiant() {
             />
             <small>Le code contient 6 caractères et change toutes les 30 secondes</small>
           </div>
-          {message.text && (
-            <div className={`message ${message.type}`}>
-              {message.text}
+          {validateMessage.text && (
+            <div className={`message ${validateMessage.type}`}>
+              {validateMessage.text}
             </div>
           )}
           <button type="submit" className="btn btn-primary" disabled={loading}>
@@ -299,19 +350,50 @@ function DashboardEtudiant() {
       {mesAbsences.length > 0 && (
         <div className="depot-justificatif-list">
           <h3>Déposer un justificatif</h3>
+          {justifMessage.text && (
+            <div className={`message ${justifMessage.type}`}>
+              {justifMessage.text}
+            </div>
+          )}
           {mesAbsences.map((absence) => (
             !absence.justificatif && (
               <div key={absence.id} id={`upload-${absence.id}`} className="depot-justificatif-card">
                 <p><strong>{absence.seance?.matiere?.nom}</strong> - {new Date(absence.seance?.dateDebut).toLocaleString('fr-FR')}</p>
                 <div className="depot-justificatif-controls">
-                  <label className="file-btn">
+                  <input
+                    id={`file-absence-${absence.id}`}
+                    type="file"
+                    accept="application/pdf,image/*"
+                    style={{ display: 'none' }}
+                    onChange={e => {
+                      const file = e.target.files[0];
+                      if (file && !['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'].includes(file.type)) {
+                        setJustifMessage({ type: 'error', text: 'Seuls les fichiers PDF ou image sont autorisés.' });
+                        return;
+                      }
+                      setUploadFiles(prev => ({ ...prev, [absence.id]: file }));
+                    }}
+                  />
+                  <label 
+                    htmlFor={`file-absence-${absence.id}`} 
+                    className="file-btn"
+                    style={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer', 
+                      background: '#ff9800', 
+                      color: '#fff', 
+                      padding: '0.5rem 1rem', 
+                      borderRadius: '8px', 
+                      fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                      minHeight: '40px',
+                      border: 'none',
+                      flexShrink: 0
+                    }}
+                  >
                     Choisir un fichier
-                    <input
-                      type="file"
-                      accept="application/pdf,image/*"
-                      onChange={(e) => setUploadFiles(prev => ({ ...prev, [absence.id]: e.target.files[0] }))}
-                      style={{ display: 'none' }}
-                    />
                   </label>
                   <span className="file-name">{uploadFiles[absence.id]?.name || 'Aucun fichier choisi'}</span>
                   <input
@@ -349,6 +431,20 @@ function DashboardEtudiant() {
                 {justif.commentaireValidation && (
                   <p><strong>Commentaire:</strong> {justif.commentaireValidation}</p>
                 )}
+                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => handleViewJustificatif(justif.id, justificatifNom(justif))}
+                  >
+                    Voir
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={() => handleDownloadJustificatif(justif.id, justificatifNom(justif))}
+                  >
+                    Télécharger
+                  </button>
+                </div>
               </div>
             </div>
           ))}

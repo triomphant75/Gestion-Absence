@@ -34,6 +34,11 @@ public interface JustificatifRepository extends JpaRepository<Justificatif, Long
     List<Justificatif> findByStatutOrderByCreatedAtAsc(StatutJustificatif statut);
 
     /**
+     * Trouve tous les justificatifs traités par un validateur (validateur_id)
+     */
+    List<Justificatif> findByValidateurIdOrderByDateValidationDesc(Long validateurId);
+
+    /**
      * Compte le nombre de justificatifs en attente
      */
     Long countByStatut(StatutJustificatif statut);
