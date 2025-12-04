@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -108,6 +108,9 @@ function DashboardAdmin() {
   });
   const [editingSeance, setEditingSeance] = useState(null);
 
+  // Filtrer les étudiants pour la pagination
+  const etudiants = useMemo(() => users.filter(u => u.role === 'ETUDIANT'), [users]);
+
   // Pagination pour toutes les listes
   const usersPagination = usePagination(users, 5);
   const departementsPagination = usePagination(departements, 5);
@@ -116,6 +119,7 @@ function DashboardAdmin() {
   const groupesPagination = usePagination(groupes, 5);
   const seancesPagination = usePagination(seances, 5);
   const groupeEtudiantsPagination = usePagination(groupeEtudiants, 5);
+  const etudiantsPagination = usePagination(etudiants, 10);
 
   const menuItems = [
     {
@@ -1210,7 +1214,6 @@ function DashboardAdmin() {
               <th>Nom</th>
               <th>Description</th>
               <th>Chef de Département</th>
-              <th>Statut</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -1233,11 +1236,6 @@ function DashboardAdmin() {
                         Non affecté
                       </span>
                     )}
-                  </td>
-                  <td>
-                    <span className={`badge ${d.actif ? 'badge-success' : 'badge-secondary'}`}>
-                      {d.actif ? 'Actif' : 'Inactif'}
-                    </span>
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1358,7 +1356,6 @@ function DashboardAdmin() {
               <th>Nom</th>
               <th>Département</th>
               <th>Niveau</th>
-              <th>Statut</th>
             </tr>
           </thead>
           <tbody>
@@ -1368,11 +1365,6 @@ function DashboardAdmin() {
                 <td>{f.nom}</td>
                 <td>{f.departement?.nom}</td>
                 <td>{f.niveau}</td>
-                <td>
-                  <span className={`badge ${f.actif ? 'badge-success' : 'badge-secondary'}`}>
-                    {f.actif ? 'Actif' : 'Inactif'}
-                  </span>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -1381,9 +1373,9 @@ function DashboardAdmin() {
           <Pagination
             currentPage={formationsPagination.currentPage}
             totalPages={formationsPagination.totalPages}
-            goToPage={formationsPagination.goToPage}
-            goToNextPage={formationsPagination.goToNextPage}
-            goToPreviousPage={formationsPagination.goToPreviousPage}
+            onPageChange={formationsPagination.goToPage}
+            hasNextPage={formationsPagination.hasNextPage}
+            hasPreviousPage={formationsPagination.hasPreviousPage}
           />
         )}
       </div>
@@ -1658,10 +1650,10 @@ function DashboardAdmin() {
               <th>Intitulé</th>
               <th>Type</th>
               <th>Formation</th>
+              <th>Professeur</th>
               <th>Coef.</th>
               <th>Heures</th>
               <th>Seuil Abs.</th>
-              <th>Statut</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -1676,14 +1668,20 @@ function DashboardAdmin() {
                   </span>
                 </td>
                 <td>{m.formation?.nom || 'N/A'}</td>
+                <td>
+                  {m.enseignant ? (
+                    <span style={{ color: '#3b82f6', fontWeight: '500' }}>
+                      {m.enseignant.prenom} {m.enseignant.nom}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>
+                      Non assigné
+                    </span>
+                  )}
+                </td>
                 <td>{m.coefficient}</td>
                 <td>{m.heuresTotal}h</td>
                 <td>{m.seuilAbsences}</td>
-                <td>
-                  <span className={`badge ${m.actif ? 'badge-success' : 'badge-secondary'}`}>
-                    {m.actif ? 'Actif' : 'Inactif'}
-                  </span>
-                </td>
                 <td>
                   <div className="action-buttons-inline">
                     <button
@@ -2092,55 +2090,59 @@ function DashboardAdmin() {
     );
   };
 
-  const renderEtudiantsView = () => {
-    // Filtrer uniquement les étudiants
-    const etudiants = users.filter(u => u.role === 'ETUDIANT');
+  const renderEtudiantsView = () => (
+    <div className="etudiants-section">
+      <h2>Liste des Étudiants</h2>
 
-    return (
-      <div className="etudiants-section">
-        <h2>Liste des Étudiants</h2>
-
-        <div className="data-table">
-          <h3>Tous les Étudiants ({etudiants.length})</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Numéro Étudiant</th>
-                <th>Nom</th>
-                <th>Prénom</th>
-                <th>Email</th>
-                <th>Formation</th>
-                <th>Téléphone</th>
+      <div className="data-table">
+        <h3>Tous les Étudiants ({etudiants.length})</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Numéro Étudiant</th>
+              <th>Nom</th>
+              <th>Prénom</th>
+              <th>Email</th>
+              <th>Formation</th>
+              <th>Téléphone</th>
+            </tr>
+          </thead>
+          <tbody>
+            {etudiantsPagination.paginatedItems.map((etudiant) => (
+              <tr key={etudiant.id}>
+                <td><strong>{etudiant.numeroEtudiant || 'N/A'}</strong></td>
+                <td>{etudiant.nom}</td>
+                <td>{etudiant.prenom}</td>
+                <td>{etudiant.email}</td>
+                <td>
+                  {etudiant.formation ? (
+                    <span className="badge badge-info">
+                      {etudiant.formation.nom}
+                    </span>
+                  ) : (
+                    <span className="badge badge-secondary">Non assigné</span>
+                  )}
+                </td>
+                <td>{etudiant.telephone || '-'}</td>
               </tr>
-            </thead>
-            <tbody>
-              {etudiants.map((etudiant) => (
-                <tr key={etudiant.id}>
-                  <td><strong>{etudiant.numeroEtudiant || 'N/A'}</strong></td>
-                  <td>{etudiant.nom}</td>
-                  <td>{etudiant.prenom}</td>
-                  <td>{etudiant.email}</td>
-                  <td>
-                    {etudiant.formation ? (
-                      <span className="badge badge-info">
-                        {etudiant.formation.nom}
-                      </span>
-                    ) : (
-                      <span className="badge badge-secondary">Non assigné</span>
-                    )}
-                  </td>
-                  <td>{etudiant.telephone || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {etudiants.length === 0 && (
-            <p className="no-data">Aucun étudiant trouvé</p>
-          )}
-        </div>
+            ))}
+          </tbody>
+        </table>
+        {etudiants.length > 10 && (
+          <Pagination
+            currentPage={etudiantsPagination.currentPage}
+            totalPages={etudiantsPagination.totalPages}
+            onPageChange={etudiantsPagination.goToPage}
+            hasNextPage={etudiantsPagination.hasNextPage}
+            hasPreviousPage={etudiantsPagination.hasPreviousPage}
+          />
+        )}
+        {etudiants.length === 0 && (
+          <p className="no-data">Aucun étudiant trouvé</p>
+        )}
       </div>
-    );
-  };
+    </div>
+  );
 
   const renderGroupesView = () => (
     <div className="groupes-section">
@@ -2335,7 +2337,6 @@ function DashboardAdmin() {
               <th>Formation</th>
               <th>Capacité</th>
               <th>Étudiants</th>
-              <th>Statut</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -2348,11 +2349,6 @@ function DashboardAdmin() {
                 <td>
                   <span className="student-count">
                     {g.nombreEtudiants || 0} / {g.capaciteMax}
-                  </span>
-                </td>
-                <td>
-                  <span className={`badge ${g.actif ? 'badge-success' : 'badge-secondary'}`}>
-                    {g.actif ? 'Actif' : 'Inactif'}
                   </span>
                 </td>
                 <td>
@@ -2391,9 +2387,9 @@ function DashboardAdmin() {
           <Pagination
             currentPage={groupesPagination.currentPage}
             totalPages={groupesPagination.totalPages}
-            goToPage={groupesPagination.goToPage}
-            goToNextPage={groupesPagination.goToNextPage}
-            goToPreviousPage={groupesPagination.goToPreviousPage}
+            onPageChange={groupesPagination.goToPage}
+            hasNextPage={groupesPagination.hasNextPage}
+            hasPreviousPage={groupesPagination.hasPreviousPage}
           />
         )}
       </div>

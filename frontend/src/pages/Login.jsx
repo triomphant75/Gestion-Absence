@@ -99,14 +99,14 @@ function Login() {
             </button>
             <button
               type="button"
-              onClick={() => quickLogin('pierre.dubois@university.com', 'password123')}
+              onClick={() => quickLogin('chef.info@university.com', 'password123')}
               className="test-btn chef"
             >
               Chef Dép.
             </button>
             <button
               type="button"
-              onClick={() => quickLogin('marie.dubois@university.com', 'password123')}
+              onClick={() => quickLogin('lucie.rene@university.com', 'password123')}
               className="test-btn etudiant"
             >
               Étudiant
