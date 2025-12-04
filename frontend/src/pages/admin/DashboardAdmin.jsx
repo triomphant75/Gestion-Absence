@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
 import {
   MdDashboard,
   MdPeople,
@@ -102,6 +104,15 @@ function DashboardAdmin() {
     groupeId: ''
   });
   const [editingSeance, setEditingSeance] = useState(null);
+
+  // Pagination pour toutes les listes
+  const usersPagination = usePagination(users, 5);
+  const departementsPagination = usePagination(departements, 5);
+  const formationsPagination = usePagination(formations, 5);
+  const matieresPagination = usePagination(matieres, 5);
+  const groupesPagination = usePagination(groupes, 5);
+  const seancesPagination = usePagination(seances, 5);
+  const groupeEtudiantsPagination = usePagination(groupeEtudiants, 5);
 
   const menuItems = [
     {
@@ -1066,7 +1077,7 @@ function DashboardAdmin() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {usersPagination.paginatedItems.map((u) => (
               <tr key={u.id}>
                 <td>{u.id}</td>
                 <td>{u.nom}</td>
@@ -1085,6 +1096,15 @@ function DashboardAdmin() {
             ))}
           </tbody>
         </table>
+        {users.length > 5 && (
+          <Pagination
+            currentPage={usersPagination.currentPage}
+            totalPages={usersPagination.totalPages}
+            onPageChange={usersPagination.goToPage}
+            hasNextPage={usersPagination.hasNextPage}
+            hasPreviousPage={usersPagination.hasPreviousPage}
+          />
+        )}
       </div>
     </div>
   );
@@ -1139,7 +1159,7 @@ function DashboardAdmin() {
             </tr>
           </thead>
           <tbody>
-            {departements.map((d) => (
+            {departementsPagination.paginatedItems.map((d) => (
               <tr key={d.id}>
                 <td>{d.id}</td>
                 <td>{d.nom}</td>
@@ -1161,6 +1181,15 @@ function DashboardAdmin() {
             ))}
           </tbody>
         </table>
+        {departements.length > 5 && (
+          <Pagination
+            currentPage={departementsPagination.currentPage}
+            totalPages={departementsPagination.totalPages}
+            onPageChange={departementsPagination.goToPage}
+            hasNextPage={departementsPagination.hasNextPage}
+            hasPreviousPage={departementsPagination.hasPreviousPage}
+          />
+        )}
       </div>
     </div>
   );
@@ -1241,7 +1270,7 @@ function DashboardAdmin() {
             </tr>
           </thead>
           <tbody>
-            {formations.map((f) => (
+            {formationsPagination.paginatedItems.map((f) => (
               <tr key={f.id}>
                 <td>{f.id}</td>
                 <td>{f.nom}</td>
@@ -1256,6 +1285,15 @@ function DashboardAdmin() {
             ))}
           </tbody>
         </table>
+        {formations.length > 5 && (
+          <Pagination
+            currentPage={formationsPagination.currentPage}
+            totalPages={formationsPagination.totalPages}
+            goToPage={formationsPagination.goToPage}
+            goToNextPage={formationsPagination.goToNextPage}
+            goToPreviousPage={formationsPagination.goToPreviousPage}
+          />
+        )}
       </div>
     </div>
   );
@@ -1536,7 +1574,7 @@ function DashboardAdmin() {
             </tr>
           </thead>
           <tbody>
-            {matieres.map((m) => (
+            {matieresPagination.paginatedItems.map((m) => (
               <tr key={m.id}>
                 <td><strong>{m.code}</strong></td>
                 <td>{m.nom}</td>
@@ -1574,6 +1612,15 @@ function DashboardAdmin() {
             ))}
           </tbody>
         </table>
+        {matieres.length > 5 && (
+          <Pagination
+            currentPage={matieresPagination.currentPage}
+            totalPages={matieresPagination.totalPages}
+            onPageChange={matieresPagination.goToPage}
+            hasNextPage={matieresPagination.hasNextPage}
+            hasPreviousPage={matieresPagination.hasPreviousPage}
+          />
+        )}
         {matieres.length === 0 && (
           <p className="no-data">Aucune matière créée</p>
         )}
@@ -1860,7 +1907,7 @@ function DashboardAdmin() {
               </tr>
             </thead>
             <tbody>
-              {seances.map((s) => (
+              {seancesPagination.paginatedItems.map((s) => (
                 <tr key={s.id}>
                   <td>
                     <div>{new Date(s.dateDebut).toLocaleDateString('fr-FR')}</div>
@@ -1938,6 +1985,15 @@ function DashboardAdmin() {
           </table>
           {seances.length === 0 && (
             <p className="no-data">Aucune séance créée</p>
+          )}
+          {seances.length > 5 && (
+            <Pagination
+              currentPage={seancesPagination.currentPage}
+              totalPages={seancesPagination.totalPages}
+              onPageChange={seancesPagination.goToPage}
+              hasNextPage={seancesPagination.hasNextPage}
+              hasPreviousPage={seancesPagination.hasPreviousPage}
+            />
           )}
         </div>
       </div>
@@ -2192,7 +2248,7 @@ function DashboardAdmin() {
             </tr>
           </thead>
           <tbody>
-            {groupes.map((g) => (
+            {groupesPagination.paginatedItems.map((g) => (
               <tr key={g.id}>
                 <td><strong>{g.nom}</strong></td>
                 <td>{g.formation?.nom || 'N/A'}</td>
@@ -2238,6 +2294,15 @@ function DashboardAdmin() {
         </table>
         {groupes.length === 0 && (
           <p className="no-data">Aucun groupe créé</p>
+        )}
+        {groupes.length > 5 && (
+          <Pagination
+            currentPage={groupesPagination.currentPage}
+            totalPages={groupesPagination.totalPages}
+            goToPage={groupesPagination.goToPage}
+            goToNextPage={groupesPagination.goToNextPage}
+            goToPreviousPage={groupesPagination.goToPreviousPage}
+          />
         )}
       </div>
     </div>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
 import { MdCalendarToday, MdCheckCircle, MdPeople } from 'react-icons/md';
 import { seanceService, presenceService } from '../../services/api';
 import './DashboardEnseignant.css';
@@ -24,6 +26,22 @@ function DashboardEnseignant() {
   const [etudiantsInscrits, setEtudiantsInscrits] = useState([]);
   const [selectedSeanceForEtudiants, setSelectedSeanceForEtudiants] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Pagination
+  const seancesPagination = usePagination(mesSeances, 5);
+  
+  // Filtrer les étudiants selon la recherche
+  const filteredEtudiants = etudiantsInscrits.filter(etudiant => {
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      etudiant.nom.toLowerCase().includes(searchLower) ||
+      etudiant.prenom.toLowerCase().includes(searchLower) ||
+      etudiant.numeroEtudiant.toLowerCase().includes(searchLower) ||
+      etudiant.email.toLowerCase().includes(searchLower)
+    );
+  });
+
+  const etudiantsPagination = usePagination(filteredEtudiants, 5);
 
   const menuItems = [
     {
@@ -205,20 +223,9 @@ function DashboardEnseignant() {
     }
   };
 
-  // Filtrer les étudiants selon la recherche
-  const filteredEtudiants = etudiantsInscrits.filter(etudiant => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      etudiant.nom.toLowerCase().includes(searchLower) ||
-      etudiant.prenom.toLowerCase().includes(searchLower) ||
-      etudiant.numeroEtudiant.toLowerCase().includes(searchLower) ||
-      etudiant.email.toLowerCase().includes(searchLower)
-    );
-  });
-
   const renderSeancesView = () => (
     <div className="seances-section">
-      <h2>Mes Séances</h2>
+      <h2>Mes Séances ({mesSeances.length})</h2>
 
       {seanceActive && currentCode && (
         <div className="active-seance-banner">
@@ -254,58 +261,69 @@ function DashboardEnseignant() {
 
       <div className="seances-list">
         {mesSeances.length > 0 ? (
-          mesSeances.map((seance) => (
-            <div key={seance.id} className="seance-card">
-              <div className="seance-header">
-                <h3>{seance.matiere?.nom}</h3>
-                <div className="seance-badges">
-                  <span className={`badge ${
-                    seance.statut === 'PREVUE' ? 'badge-info' :
-                    seance.statut === 'REPORTEE' ? 'badge-warning' :
-                    seance.statut === 'EN_COURS' ? 'badge-success' :
-                    seance.statut === 'TERMINEE' ? 'badge-secondary' :
-                    'badge-danger'
-                  }`}>
-                    {seance.statut === 'PREVUE' ? 'Prévue' :
-                     seance.statut === 'REPORTEE' ? 'Reportée' :
-                     seance.statut === 'EN_COURS' ? 'En cours' :
-                     seance.statut === 'TERMINEE' ? 'Terminée' :
-                     'Annulée'}
-                  </span>
+          <>
+            {seancesPagination.paginatedItems.map((seance) => (
+              <div key={seance.id} className="seance-card">
+                <div className="seance-header">
+                  <h3>{seance.matiere?.nom}</h3>
+                  <div className="seance-badges">
+                    <span className={`badge ${
+                      seance.statut === 'PREVUE' ? 'badge-info' :
+                      seance.statut === 'REPORTEE' ? 'badge-warning' :
+                      seance.statut === 'EN_COURS' ? 'badge-success' :
+                      seance.statut === 'TERMINEE' ? 'badge-secondary' :
+                      'badge-danger'
+                    }`}>
+                      {seance.statut === 'PREVUE' ? 'Prévue' :
+                       seance.statut === 'REPORTEE' ? 'Reportée' :
+                       seance.statut === 'EN_COURS' ? 'En cours' :
+                       seance.statut === 'TERMINEE' ? 'Terminée' :
+                       'Annulée'}
+                    </span>
+                  </div>
+                </div>
+                <div className="seance-details">
+                  <p><strong>Type:</strong> {seance.typeSeance}</p>
+                  <p><strong>Date:</strong> {new Date(seance.dateDebut).toLocaleString('fr-FR')}</p>
+                  <p><strong>Durée:</strong> {new Date(seance.dateDebut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - {new Date(seance.dateFin).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p><strong>Salle:</strong> {seance.salle}</p>
+                  {seance.groupe && <p><strong>Groupe:</strong> {seance.groupe.nom}</p>}
+                </div>
+                <div className="seance-actions">
+                  {(seance.statut === 'PREVUE' || seance.statut === 'REPORTEE') && (
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => startSeance(seance.id)}
+                    >
+                      Lancer la Séance
+                    </button>
+                  )}
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => viewPresences(seance.id)}
+                  >
+                    Voir Présences
+                  </button>
+                  <button
+                    className="btn btn-info"
+                    onClick={() => viewEtudiantsInscrits(seance.id)}
+                  >
+                    <MdPeople style={{ marginRight: '5px' }} />
+                    Liste Étudiants
+                  </button>
                 </div>
               </div>
-              <div className="seance-details">
-                <p><strong>Type:</strong> {seance.typeSeance}</p>
-                <p><strong>Date:</strong> {new Date(seance.dateDebut).toLocaleString('fr-FR')}</p>
-                <p><strong>Durée:</strong> {new Date(seance.dateDebut).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - {new Date(seance.dateFin).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
-                <p><strong>Salle:</strong> {seance.salle}</p>
-                {seance.groupe && <p><strong>Groupe:</strong> {seance.groupe.nom}</p>}
-              </div>
-              <div className="seance-actions">
-                {(seance.statut === 'PREVUE' || seance.statut === 'REPORTEE') && (
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => startSeance(seance.id)}
-                  >
-                    Lancer la Séance
-                  </button>
-                )}
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => viewPresences(seance.id)}
-                >
-                  Voir Présences
-                </button>
-                <button
-                  className="btn btn-info"
-                  onClick={() => viewEtudiantsInscrits(seance.id)}
-                >
-                  <MdPeople style={{ marginRight: '5px' }} />
-                  Liste Étudiants
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+            {mesSeances.length > 5 && (
+              <Pagination
+                currentPage={seancesPagination.currentPage}
+                totalPages={seancesPagination.totalPages}
+                onPageChange={seancesPagination.goToPage}
+                hasNextPage={seancesPagination.hasNextPage}
+                hasPreviousPage={seancesPagination.hasPreviousPage}
+              />
+            )}
+          </>
         ) : (
           <p className="no-data">Aucune séance programmée</p>
         )}
@@ -470,36 +488,47 @@ function DashboardEnseignant() {
         {loading ? (
           <p className="loading">Chargement...</p>
         ) : filteredEtudiants.length > 0 ? (
-          <table>
-            <thead>
-              <tr>
-                <th>N° Étudiant</th>
-                <th>Nom</th>
-                <th>Prénom</th>
-                <th>Email</th>
-                <th>Téléphone</th>
-                {selectedSeanceForEtudiants?.typeSeance !== 'CM' && <th>Groupe</th>}
-                <th>Formation</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredEtudiants.map((etudiant) => (
-                <tr key={etudiant.id}>
-                  <td><strong>{etudiant.numeroEtudiant}</strong></td>
-                  <td>{etudiant.nom}</td>
-                  <td>{etudiant.prenom}</td>
-                  <td>{etudiant.email}</td>
-                  <td>{etudiant.telephone || '-'}</td>
-                  {selectedSeanceForEtudiants?.typeSeance !== 'CM' && (
-                    <td>
-                      <span className="badge badge-info">{etudiant.nomGroupe}</span>
-                    </td>
-                  )}
-                  <td>{etudiant.nomFormation}</td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>N° Étudiant</th>
+                  <th>Nom</th>
+                  <th>Prénom</th>
+                  <th>Email</th>
+                  <th>Téléphone</th>
+                  {selectedSeanceForEtudiants?.typeSeance !== 'CM' && <th>Groupe</th>}
+                  <th>Formation</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {etudiantsPagination.paginatedItems.map((etudiant) => (
+                  <tr key={etudiant.id}>
+                    <td><strong>{etudiant.numeroEtudiant}</strong></td>
+                    <td>{etudiant.nom}</td>
+                    <td>{etudiant.prenom}</td>
+                    <td>{etudiant.email}</td>
+                    <td>{etudiant.telephone || '-'}</td>
+                    {selectedSeanceForEtudiants?.typeSeance !== 'CM' && (
+                      <td>
+                        <span className="badge badge-info">{etudiant.nomGroupe}</span>
+                      </td>
+                    )}
+                    <td>{etudiant.nomFormation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredEtudiants.length > 5 && (
+              <Pagination
+                currentPage={etudiantsPagination.currentPage}
+                totalPages={etudiantsPagination.totalPages}
+                onPageChange={etudiantsPagination.goToPage}
+                hasNextPage={etudiantsPagination.hasNextPage}
+                hasPreviousPage={etudiantsPagination.hasPreviousPage}
+              />
+            )}
+          </>
         ) : (
           <p className="no-data">
             {searchTerm ? 'Aucun étudiant ne correspond à votre recherche' : 'Aucun étudiant inscrit à cette séance'}

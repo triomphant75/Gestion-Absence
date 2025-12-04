@@ -1,18 +1,5 @@
 package com.university.attendance.service;
 
-import com.university.attendance.model.Justificatif;
-import com.university.attendance.model.Presence;
-import com.university.attendance.model.StatutJustificatif;
-import com.university.attendance.model.User;
-import com.university.attendance.repository.JustificatifRepository;
-import com.university.attendance.repository.PresenceRepository;
-import com.university.attendance.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +9,20 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.university.attendance.model.Justificatif;
+import com.university.attendance.model.Presence;
+import com.university.attendance.model.StatutJustificatif;
+import com.university.attendance.model.User;
+import com.university.attendance.repository.JustificatifRepository;
+import com.university.attendance.repository.PresenceRepository;
+import com.university.attendance.repository.UserRepository;
 
 /**
  * Service pour gérer les justificatifs d'absence

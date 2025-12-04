@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
 import {
   MdDescription,
   MdWarning,
@@ -22,6 +24,12 @@ function DashboardChefDepartement() {
   const [commentaire, setCommentaire] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Pagination
+  const justificatifsPagination = usePagination(justificatifs, 5);
+  const traitementsPagination = usePagination(traitements, 5);
+  const avertissementsPagination = usePagination(avertissements, 5);
+  const etudiantsPagination = usePagination(etudiants, 5);
 
   // Utilise le vrai nom du fichier stocké côté backend
   const justificatifNom = (justif) => {
@@ -194,7 +202,7 @@ function DashboardChefDepartement() {
 
   const renderJustificatifsView = () => (
     <div className="justificatifs-section">
-      <h2>Justificatifs en Attente</h2>
+      <h2>Justificatifs en Attente ({justificatifs.length})</h2>
 
       {message.text && (
         <div className={`message ${message.type}`}>
@@ -203,43 +211,44 @@ function DashboardChefDepartement() {
       )}
 
       {justificatifs.length > 0 ? (
-        <div className="justificatifs-grid">
-          {justificatifs.map((justif) => (
-            <div key={justif.id} className="justificatif-card">
-              <div className="justificatif-header">
-                <h3>Justificatif #{justif.id}</h3>
-                <span className={`badge ${getStatutBadgeClass(justif.statut)}`}>
-                  {justif.statut}
-                </span>
-              </div>
-              <div className="justificatif-details">
-                <p><strong>Étudiant:</strong> {justif.etudiant?.nom} {justif.etudiant?.prenom}</p>
-                <p><strong>Motif:</strong> {justif.motif}</p>
-                <p><strong>Déposé le:</strong> {new Date(justif.dateDepot).toLocaleDateString('fr-FR')}</p>
-                {justif.absence && (
-                  <>
-                    <p><strong>Absence du:</strong> {new Date(justif.absence.seance?.dateDebut).toLocaleDateString('fr-FR')}</p>
-                    <p><strong>Matière:</strong> {justif.absence.seance?.matiere?.nom}</p>
-                  </>
-                )}
-              </div>
-              <div className="justificatif-actions">
-                {selectedJustif === justif.id ? (
-                  <div className="action-form">
-                    <textarea
-                      value={commentaire}
-                      onChange={(e) => setCommentaire(e.target.value)}
-                      placeholder="Commentaire (optionnel)..."
-                      rows={3}
-                    />
-                    <div className="action-buttons">
-                      <button
-                        className="btn btn-success"
-                        onClick={() => handleValiderJustificatif(justif.id)}
-                        disabled={loading}
-                      >
-                        Valider
-                      </button>
+        <>
+          <div className="justificatifs-grid">
+            {justificatifsPagination.paginatedItems.map((justif) => (
+              <div key={justif.id} className="justificatif-card">
+                <div className="justificatif-header">
+                  <h3>Justificatif #{justif.id}</h3>
+                  <span className={`badge ${getStatutBadgeClass(justif.statut)}`}>
+                    {justif.statut}
+                  </span>
+                </div>
+                <div className="justificatif-details">
+                  <p><strong>Étudiant:</strong> {justif.etudiant?.nom} {justif.etudiant?.prenom}</p>
+                  <p><strong>Motif:</strong> {justif.motif}</p>
+                  <p><strong>Déposé le:</strong> {new Date(justif.dateDepot).toLocaleDateString('fr-FR')}</p>
+                  {justif.absence && (
+                    <>
+                      <p><strong>Absence du:</strong> {new Date(justif.absence.seance?.dateDebut).toLocaleDateString('fr-FR')}</p>
+                      <p><strong>Matière:</strong> {justif.absence.seance?.matiere?.nom}</p>
+                    </>
+                  )}
+                </div>
+                <div className="justificatif-actions">
+                  {selectedJustif === justif.id ? (
+                    <div className="action-form">
+                      <textarea
+                        value={commentaire}
+                        onChange={(e) => setCommentaire(e.target.value)}
+                        placeholder="Commentaire (optionnel)..."
+                        rows={3}
+                      />
+                      <div className="action-buttons">
+                        <button
+                          className="btn btn-success"
+                          onClick={() => handleValiderJustificatif(justif.id)}
+                          disabled={loading}
+                        >
+                          Valider
+                        </button>
                       <button
                         className="btn btn-danger"
                         onClick={() => handleRefuserJustificatif(justif.id)}
@@ -285,8 +294,18 @@ function DashboardChefDepartement() {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {justificatifs.length > 5 && (
+            <Pagination
+              currentPage={justificatifsPagination.currentPage}
+              totalPages={justificatifsPagination.totalPages}
+              onPageChange={justificatifsPagination.goToPage}
+              hasNextPage={justificatifsPagination.hasNextPage}
+              hasPreviousPage={justificatifsPagination.hasPreviousPage}
+            />
+          )}
+        </>
       ) : (
         <p className="no-data">Aucun justificatif en attente</p>
       )}
@@ -295,11 +314,12 @@ function DashboardChefDepartement() {
 
   const renderHistoriqueView = () => (
     <div className="historique-section">
-      <h2>Historique des Traitements</h2>
+      <h2>Historique des Traitements ({traitements.length})</h2>
 
       {traitements.length > 0 ? (
-        <div className="justificatifs-list">
-          {traitements.map((justif) => (
+        <>
+          <div className="justificatifs-list">
+          {traitementsPagination.paginatedItems.map((justif) => (
             <div key={justif.id} className="justificatif-card">
               <div className="justificatif-header">
                 <h3>Justificatif #{justif.id}</h3>
@@ -343,7 +363,17 @@ function DashboardChefDepartement() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+          {traitements.length > 5 && (
+            <Pagination
+              currentPage={traitementsPagination.currentPage}
+              totalPages={traitementsPagination.totalPages}
+              onPageChange={traitementsPagination.goToPage}
+              hasNextPage={traitementsPagination.hasNextPage}
+              hasPreviousPage={traitementsPagination.hasPreviousPage}
+            />
+          )}
+        </>
       ) : (
         <p className="no-data">Aucun traitement réalisé</p>
       )}
@@ -352,10 +382,11 @@ function DashboardChefDepartement() {
 
   const renderAvertissementsView = () => (
     <div className="avertissements-section">
-      <h2>Avertissements</h2>
+      <h2>Avertissements ({avertissements.length})</h2>
       {avertissements.length > 0 ? (
-        <div className="avertissements-list">
-          {avertissements.map((avert) => (
+        <>
+          <div className="avertissements-list">
+            {avertissementsPagination.paginatedItems.map((avert) => (
             <div key={avert.id} className="avertissement-card">
               <div className="avertissement-header">
                 <h3>Avertissement #{avert.id}</h3>
@@ -374,8 +405,18 @@ function DashboardChefDepartement() {
                 )}
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {avertissements.length > 5 && (
+            <Pagination
+              currentPage={avertissementsPagination.currentPage}
+              totalPages={avertissementsPagination.totalPages}
+              onPageChange={avertissementsPagination.goToPage}
+              hasNextPage={avertissementsPagination.hasNextPage}
+              hasPreviousPage={avertissementsPagination.hasPreviousPage}
+            />
+          )}
+        </>
       ) : (
         <p className="no-data">Aucun avertissement</p>
       )}
@@ -413,48 +454,59 @@ function DashboardChefDepartement() {
 
   const renderEtudiantsView = () => (
     <div className="etudiants-section">
-      <h2>Liste des Étudiants</h2>
+      <h2>Liste des Étudiants ({etudiants.length})</h2>
       {etudiants.length > 0 ? (
-        <div className="etudiants-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Numéro</th>
-                <th>Nom</th>
-                <th>Prénom</th>
-                <th>Email</th>
-                <th>Formation</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {etudiants.map((etudiant) => (
-                <tr key={etudiant.id}>
-                  <td>{etudiant.numeroEtudiant}</td>
-                  <td>{etudiant.nom}</td>
-                  <td>{etudiant.prenom}</td>
-                  <td>{etudiant.email}</td>
-                  <td>{etudiant.formation?.nom || 'N/A'}</td>
-                  <td>
-                    <button
-                      className="btn btn-sm btn-info"
-                      onClick={async () => {
-                        try {
-                          const stats = await presenceService.getStatistiques(etudiant.id);
-                          console.log('Statistiques étudiant:', stats.data);
-                        } catch (error) {
-                          console.error('Erreur:', error);
-                        }
-                      }}
-                    >
-                      Voir Stats
-                    </button>
-                  </td>
+        <>
+          <div className="etudiants-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Numéro</th>
+                  <th>Nom</th>
+                  <th>Prénom</th>
+                  <th>Email</th>
+                  <th>Formation</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {etudiantsPagination.paginatedItems.map((etudiant) => (
+                  <tr key={etudiant.id}>
+                    <td>{etudiant.numeroEtudiant}</td>
+                    <td>{etudiant.nom}</td>
+                    <td>{etudiant.prenom}</td>
+                    <td>{etudiant.email}</td>
+                    <td>{etudiant.formation?.nom || 'N/A'}</td>
+                    <td>
+                      <button
+                        className="btn btn-sm btn-info"
+                        onClick={async () => {
+                          try {
+                            const stats = await presenceService.getStatistiques(etudiant.id);
+                            console.log('Statistiques étudiant:', stats.data);
+                          } catch (error) {
+                            console.error('Erreur:', error);
+                          }
+                        }}
+                      >
+                        Voir Stats
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {etudiants.length > 5 && (
+            <Pagination
+              currentPage={etudiantsPagination.currentPage}
+              totalPages={etudiantsPagination.totalPages}
+              onPageChange={etudiantsPagination.goToPage}
+              hasNextPage={etudiantsPagination.hasNextPage}
+              hasPreviousPage={etudiantsPagination.hasPreviousPage}
+            />
+          )}
+        </>
       ) : (
         <p className="no-data">Aucun étudiant</p>
       )}

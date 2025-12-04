@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
 import {
   MdCheckCircle,
   MdBarChart,
   MdEventBusy,
   MdAttachFile,
   MdBook,
-  MdAccessTime
+  MdAccessTime,
+  MdVideoCall
 } from 'react-icons/md';
 import { presenceService, justificatifService, groupeEtudiantService, seanceService } from '../../services/api';
 import './DashboardEtudiant.css';
@@ -18,6 +21,8 @@ function DashboardEtudiant() {
   const [statistics, setStatistics] = useState(null);
   const [mesAbsences, setMesAbsences] = useState([]);
   const [mesJustificatifs, setMesJustificatifs] = useState([]);
+  const [mesSeances, setMesSeances] = useState([]);
+  const [seancesPresences, setSeancesPresences] = useState({});
   const [seanceCode, setSeanceCode] = useState('');
   const [seanceId, setSeanceId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,6 +30,11 @@ function DashboardEtudiant() {
   const [justifMessage, setJustifMessage] = useState({ type: '', text: '' });
   const [uploadFiles, setUploadFiles] = useState({});
   const [uploadMotifs, setUploadMotifs] = useState({});
+
+  // Pagination
+  const absencesPagination = usePagination(mesAbsences, 5);
+  const justificatifsPagination = usePagination(mesJustificatifs, 5);
+  const seancesPagination = usePagination(mesSeances, 5);
 
   // Utilise le vrai nom du fichier stocké côté backend
   const justificatifNom = (justif) => {
@@ -55,6 +65,12 @@ function DashboardEtudiant() {
       label: 'Justificatifs',
       active: activeView === 'justificatifs',
       onClick: () => setActiveView('justificatifs')
+    },
+    {
+      icon: <MdVideoCall />,
+      label: 'Présences aux Séances',
+      active: activeView === 'presences',
+      onClick: () => setActiveView('presences')
     }
   ];
 
@@ -63,6 +79,7 @@ function DashboardEtudiant() {
       loadStatistics();
       loadAbsences();
       loadJustificatifs();
+      loadSeancesEtudiant();
     }
   }, [user]);
 
@@ -91,6 +108,63 @@ function DashboardEtudiant() {
       setMesJustificatifs(response.data);
     } catch (error) {
       console.error('Erreur chargement justificatifs:', error);
+    }
+  };
+
+  const loadSeancesEtudiant = async () => {
+    try {
+      // Récupérer les groupes de l'étudiant
+      const groupesResponse = await groupeEtudiantService.getGroupesEtudiant(user.id);
+      const groupes = groupesResponse.data.map(ge => ge.groupe).filter(Boolean);
+      
+      if (groupes.length === 0) {
+        setMesSeances([]);
+        return;
+      }
+
+      // Récupérer TOUTES les seances
+      const toutesSeancesResponse = await seanceService.getAll();
+      
+      // Filtrer les seances
+      // Les seances peuvent être :
+      // 1. Liées à un groupe TD/TP de l'étudiant
+      // 2. Des CM (groupe=null) de la matière
+      const seances = toutesSeancesResponse.data.filter(seance => {
+        // Cas 1 : La seance est liée au groupe de l'étudiant
+        if (seance.groupe && groupes.some(g => g.id === seance.groupe.id)) {
+          return true;
+        }
+        
+        // Cas 2 : La seance est un CM
+        if (!seance.groupe && seance.matiere) {
+          return true;
+        }
+        
+        return false;
+      });
+
+      // Récupérer les présences pour toutes les seances
+      // C'est grâce aux présences qu'on va filtrer les vraies seances de l'étudiant
+      const presencesMap = {};
+      const seancesAvecPresence = [];
+      
+      for (const seance of seances) {
+        try {
+          const presencesResponse = await presenceService.getBySeance(seance.id);
+          const etudiantPresence = presencesResponse.data.find(p => p.etudiant?.id === user.id);
+          if (etudiantPresence) {
+            presencesMap[seance.id] = etudiantPresence;
+            seancesAvecPresence.push(seance);
+          }
+        } catch (error) {
+          console.error(`Erreur chargement presences seance ${seance.id}:`, error);
+        }
+      }
+
+      setMesSeances(seancesAvecPresence);
+      setSeancesPresences(presencesMap);
+    } catch (error) {
+      console.error('Erreur chargement seances etudiant:', error);
     }
   };
 
@@ -202,6 +276,15 @@ function DashboardEtudiant() {
     }
   };
 
+  const getPresenceStatutClass = (statut) => {
+    switch (statut) {
+      case 'PRESENT': return 'badge-success';
+      case 'ABSENT': return 'badge-danger';
+      case 'RETARD': return 'badge-warning';
+      default: return 'badge-secondary';
+    }
+  };
+
   const renderValidateView = () => (
     <div className="validate-section">
       <h2>Valider ma Présence</h2>
@@ -302,41 +385,52 @@ function DashboardEtudiant() {
 
   const renderAbsencesView = () => (
     <div className="absences-section">
-      <h2>Mes Absences</h2>
+      <h2>Mes Absences ({mesAbsences.length})</h2>
       {mesAbsences.length > 0 ? (
-        <div className="absences-list">
-          {mesAbsences.map((absence) => (
-            <div key={absence.id} className="absence-card">
-              <div className="absence-header">
-                <h3>{absence.seance?.matiere?.nom || 'Matière'}</h3>
-                <span className="badge badge-error">Absent</span>
-              </div>
-              <div className="absence-details">
-                <p><strong>Date:</strong> {new Date(absence.seance?.dateDebut).toLocaleString('fr-FR')}</p>
-                <p><strong>Type:</strong> {absence.seance?.typeSeance}</p>
-                <p><strong>Enseignant:</strong> {absence.seance?.enseignant?.nom} {absence.seance?.enseignant?.prenom}</p>
-              </div>
-              {!absence.justificatif && (
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setActiveView('justificatifs');
-                    document.getElementById(`upload-${absence.id}`)?.scrollIntoView();
-                  }}
-                >
-                  Déposer un Justificatif
-                </button>
-              )}
-              {absence.justificatif && (
-                <div className="justificatif-status">
-                  <span className={`badge ${getStatutBadgeClass(absence.justificatif.statut)}`}>
-                    {absence.justificatif.statut}
-                  </span>
+        <>
+          <div className="absences-list">
+            {absencesPagination.paginatedItems.map((absence) => (
+              <div key={absence.id} className="absence-card">
+                <div className="absence-header">
+                  <h3>{absence.seance?.matiere?.nom || 'Matière'}</h3>
+                  <span className="badge badge-error">Absent</span>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+                <div className="absence-details">
+                  <p><strong>Date:</strong> {new Date(absence.seance?.dateDebut).toLocaleString('fr-FR')}</p>
+                  <p><strong>Type:</strong> {absence.seance?.typeSeance}</p>
+                  <p><strong>Enseignant:</strong> {absence.seance?.enseignant?.nom} {absence.seance?.enseignant?.prenom}</p>
+                </div>
+                {!absence.justificatif && (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setActiveView('justificatifs');
+                      document.getElementById(`upload-${absence.id}`)?.scrollIntoView();
+                    }}
+                  >
+                    Déposer un Justificatif
+                  </button>
+                )}
+                {absence.justificatif && (
+                  <div className="justificatif-status">
+                    <span className={`badge ${getStatutBadgeClass(absence.justificatif.statut)}`}>
+                      {absence.justificatif.statut}
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          {mesAbsences.length > 5 && (
+            <Pagination
+              currentPage={absencesPagination.currentPage}
+              totalPages={absencesPagination.totalPages}
+              onPageChange={absencesPagination.goToPage}
+              hasNextPage={absencesPagination.hasNextPage}
+              hasPreviousPage={absencesPagination.hasPreviousPage}
+            />
+          )}
+        </>
       ) : (
         <p className="no-data">Aucune absence enregistrée</p>
       )}
@@ -413,44 +507,137 @@ function DashboardEtudiant() {
         </div>
       )}
       {mesJustificatifs.length > 0 ? (
-        <div className="justificatifs-list">
-          {mesJustificatifs.map((justif) => (
-            <div key={justif.id} className="justificatif-card">
-              <div className="justificatif-header">
-                <h3>Justificatif #{justif.id}</h3>
-                <span className={`badge ${getStatutBadgeClass(justif.statut)}`}>
-                  {justif.statut}
-                </span>
-              </div>
-              <div className="justificatif-details">
-                <p><strong>Motif:</strong> {justif.motif}</p>
-                <p><strong>Déposé le:</strong> {justif.createdAt ? new Date(justif.createdAt).toLocaleDateString('fr-FR') : '-'}</p>
-                {justif.dateValidation && (
-                  <p><strong>Validé le:</strong> {new Date(justif.dateValidation).toLocaleDateString('fr-FR')}</p>
-                )}
-                {justif.commentaireValidation && (
-                  <p><strong>Commentaire:</strong> {justif.commentaireValidation}</p>
-                )}
-                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => handleViewJustificatif(justif.id, justificatifNom(justif))}
-                  >
-                    Voir
-                  </button>
-                  <button
-                    className="btn"
-                    onClick={() => handleDownloadJustificatif(justif.id, justificatifNom(justif))}
-                  >
-                    Télécharger
-                  </button>
+        <>
+          <div className="justificatifs-list">
+            {justificatifsPagination.paginatedItems.map((justif) => (
+              <div key={justif.id} className="justificatif-card">
+                <div className="justificatif-header">
+                  <h3>Justificatif #{justif.id}</h3>
+                  <span className={`badge ${getStatutBadgeClass(justif.statut)}`}>
+                    {justif.statut}
+                  </span>
+                </div>
+                <div className="justificatif-details">
+                  <p><strong>Motif:</strong> {justif.motif}</p>
+                  <p><strong>Déposé le:</strong> {justif.createdAt ? new Date(justif.createdAt).toLocaleDateString('fr-FR') : '-'}</p>
+                  {justif.dateValidation && (
+                    <p><strong>Validé le:</strong> {new Date(justif.dateValidation).toLocaleDateString('fr-FR')}</p>
+                  )}
+                  {justif.commentaireValidation && (
+                    <p><strong>Commentaire:</strong> {justif.commentaireValidation}</p>
+                  )}
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleViewJustificatif(justif.id, justificatifNom(justif))}
+                    >
+                      Voir
+                    </button>
+                    <button
+                      className="btn"
+                      onClick={() => handleDownloadJustificatif(justif.id, justificatifNom(justif))}
+                    >
+                      Télécharger
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {mesJustificatifs.length > 5 && (
+            <Pagination
+              currentPage={justificatifsPagination.currentPage}
+              totalPages={justificatifsPagination.totalPages}
+              onPageChange={justificatifsPagination.goToPage}
+              hasNextPage={justificatifsPagination.hasNextPage}
+              hasPreviousPage={justificatifsPagination.hasPreviousPage}
+            />
+          )}
+        </>
       ) : (
         <p className="no-data">Aucun justificatif déposé</p>
+      )}
+    </div>
+  );
+
+  const renderPresencesView = () => (
+    <div className="presences-section">
+      <h2>Mes Présences aux Séances</h2>
+      
+      {mesSeances.length > 0 ? (
+        <>
+          <div className="seances-list">
+            {seancesPagination.paginatedItems.map((seance) => {
+              const presence = seancesPresences[seance.id];
+              const dateDebut = new Date(seance.dateDebut);
+              const dateFin = new Date(seance.dateFin);
+              
+              return (
+                <div key={seance.id} className="seance-presence-card">
+                  <div className="seance-header">
+                    <div className="seance-info">
+                      <h3>{seance.matiere?.nom}</h3>
+                      <p className="seance-code">Code: {seance.matiere?.code}</p>
+                    </div>
+                    {presence && (
+                      <span className={`badge ${getPresenceStatutClass(presence.statut)}`}>
+                        {presence.statut}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="seance-details">
+                    <div className="detail-item">
+                      <strong>Date:</strong> {dateDebut.toLocaleDateString('fr-FR')}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Horaire:</strong> {dateDebut.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} - {dateFin.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Type:</strong> <span className={`badge ${seance.matiere?.typeSeance === 'CM' ? 'badge-info' : 'badge-warning'}`}>
+                        {seance.matiere?.typeSeance === 'CM' ? 'Cours Magistral' : 'TD/TP'}
+                      </span>
+                    </div>
+                    <div className="detail-item">
+                      <strong>Enseignant:</strong> {seance.enseignant?.prenom} {seance.enseignant?.nom}
+                    </div>
+                    <div className="detail-item">
+                      <strong>Salle:</strong> {seance.salle}
+                    </div>
+                    {seance.groupe && (
+                      <div className="detail-item">
+                        <strong>Groupe:</strong> {seance.groupe?.nom}
+                      </div>
+                    )}
+                    {presence?.commentaire && (
+                      <div className="detail-item">
+                        <strong>Commentaire:</strong> {presence.commentaire}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {!presence && (
+                    <div className="no-presence-info">
+                      <p>Aucune donnée de présence enregistrée</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          {mesSeances.length > 5 && (
+            <Pagination
+              currentPage={seancesPagination.currentPage}
+              totalPages={seancesPagination.totalPages}
+              onPageChange={seancesPagination.goToPage}
+              hasNextPage={seancesPagination.hasNextPage}
+              hasPreviousPage={seancesPagination.hasPreviousPage}
+            />
+          )}
+        </>
+      ) : (
+        <p className="no-data">Aucune séance trouvée. Vous n'êtes inscrit à aucun groupe.</p>
       )}
     </div>
   );
@@ -467,6 +654,7 @@ function DashboardEtudiant() {
         {activeView === 'stats' && renderStatsView()}
         {activeView === 'absences' && renderAbsencesView()}
         {activeView === 'justificatifs' && renderJustificatifsView()}
+        {activeView === 'presences' && renderPresencesView()}
       </div>
     </DashboardLayout>
   );

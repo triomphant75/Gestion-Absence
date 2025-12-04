@@ -1,11 +1,12 @@
 package com.university.attendance.repository;
 
-import com.university.attendance.model.Justificatif;
-import com.university.attendance.model.StatutJustificatif;
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import com.university.attendance.model.Justificatif;
+import com.university.attendance.model.StatutJustificatif;
 
 /**
  * Repository pour l'entité Justificatif

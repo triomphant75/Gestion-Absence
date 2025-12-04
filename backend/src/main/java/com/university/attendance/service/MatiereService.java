@@ -1,19 +1,20 @@
 package com.university.attendance.service;
 
-import com.university.attendance.dto.MatiereDTO;
-import com.university.attendance.model.Formation;
-import com.university.attendance.model.Matiere;
-import com.university.attendance.repository.FormationRepository;
-import com.university.attendance.repository.MatiereRepository;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import com.university.attendance.repository.UserRepository;
-import com.university.attendance.model.User;
-import com.university.attendance.model.Role;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import com.university.attendance.dto.MatiereDTO;
+import com.university.attendance.model.Formation;
+import com.university.attendance.model.Matiere;
+import com.university.attendance.model.Role;
+import com.university.attendance.model.User;
+import com.university.attendance.repository.FormationRepository;
+import com.university.attendance.repository.MatiereRepository;
+import com.university.attendance.repository.UserRepository;
 
 /**
  * Service pour gérer les matières
