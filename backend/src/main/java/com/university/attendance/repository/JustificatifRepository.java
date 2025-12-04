@@ -48,4 +48,9 @@ public interface JustificatifRepository extends JpaRepository<Justificatif, Long
      * Vérifie si une absence a déjà un justificatif
      */
     boolean existsByAbsenceId(Long absenceId);
+
+    /**
+     * Trouve un justificatif par l'ID de l'absence
+     */
+    java.util.Optional<Justificatif> findByAbsenceId(Long absenceId);
 }

@@ -54,8 +54,11 @@ function DashboardAdmin() {
   const [newDepartement, setNewDepartement] = useState({
     nom: '',
     description: '',
+    chefDepartementId: '',
     actif: true
   });
+
+  const [chefsDepartement, setChefsDepartement] = useState([]);
 
   const [newFormation, setNewFormation] = useState({
     nom: '',
@@ -192,6 +195,10 @@ function DashboardAdmin() {
     try {
       const response = await userService.getAll();
       setUsers(response.data);
+
+      // Charger les chefs de département
+      const chefsResponse = await userService.getByRole('CHEF_DEPARTEMENT');
+      setChefsDepartement(chefsResponse.data);
     } catch (error) {
       console.error('Erreur chargement utilisateurs:', error);
     }
@@ -326,14 +333,27 @@ function DashboardAdmin() {
     setMessage({ type: '', text: '' });
 
     try {
-      await departementService.create(newDepartement);
+      const departementData = {
+        nom: newDepartement.nom,
+        description: newDepartement.description,
+        actif: newDepartement.actif
+      };
+
+      const response = await departementService.create(departementData);
+      const departementId = response.data.id;
+
+      // Si un chef est sélectionné, l'affecter
+      if (newDepartement.chefDepartementId) {
+        await departementService.affecterChef(departementId, newDepartement.chefDepartementId);
+      }
+
       setMessage({ type: 'success', text: 'Département créé avec succès!' });
-      setNewDepartement({ nom: '', description: '', actif: true });
+      setNewDepartement({ nom: '', description: '', chefDepartementId: '', actif: true });
       loadDepartements();
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error.response?.data?.message || 'Erreur lors de la création'
+        text: error.response?.data?.error || error.response?.data?.message || 'Erreur lors de la création'
       });
     } finally {
       setLoading(false);
@@ -900,6 +920,25 @@ function DashboardAdmin() {
     }
   };
 
+  const handleAffecterChef = async (departementId, chefId) => {
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      await departementService.affecterChef(departementId, chefId);
+      setMessage({ type: 'success', text: 'Chef de département affecté avec succès!' });
+      loadDepartements();
+      loadUsers();
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.error || 'Erreur lors de l\'affectation'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderDashboardView = () => (
     <div className="overview-section">
       <h2>Vue d'Ensemble</h2>
@@ -1133,6 +1172,22 @@ function DashboardAdmin() {
               rows={3}
             />
           </div>
+          <div className="form-group">
+            <label>Chef de Département</label>
+            <select
+              value={newDepartement.chefDepartementId}
+              onChange={(e) => setNewDepartement({ ...newDepartement, chefDepartementId: e.target.value })}
+            >
+              <option value="">Aucun (à affecter plus tard)</option>
+              {chefsDepartement
+                .filter(chef => !chef.departement || chef.departement === null)
+                .map((chef) => (
+                  <option key={chef.id} value={chef.id}>
+                    {chef.prenom} {chef.nom} - {chef.email}
+                  </option>
+                ))}
+            </select>
+          </div>
 
           {message.text && (
             <div className={`message ${message.type}`}>
@@ -1154,31 +1209,68 @@ function DashboardAdmin() {
               <th>ID</th>
               <th>Nom</th>
               <th>Description</th>
+              <th>Chef de Département</th>
               <th>Statut</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {departementsPagination.paginatedItems.map((d) => (
-              <tr key={d.id}>
-                <td>{d.id}</td>
-                <td>{d.nom}</td>
-                <td>{d.description}</td>
-                <td>
-                  <span className={`badge ${d.actif ? 'badge-success' : 'badge-secondary'}`}>
-                    {d.actif ? 'Actif' : 'Inactif'}
-                  </span>
-                </td>
-                <td>
-                  <button
-                    className="btn btn-sm btn-danger"
-                    onClick={() => handleDeleteDepartement(d.id)}
-                  >
-                    Supprimer
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {departementsPagination.paginatedItems.map((d) => {
+              const chefActuel = users.find(u => u.role === 'CHEF_DEPARTEMENT' && u.departement?.id === d.id);
+
+              return (
+                <tr key={d.id}>
+                  <td>{d.id}</td>
+                  <td>{d.nom}</td>
+                  <td>{d.description}</td>
+                  <td>
+                    {chefActuel ? (
+                      <span style={{ color: '#10b981', fontWeight: '600' }}>
+                        {chefActuel.prenom} {chefActuel.nom}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#6b7280', fontStyle: 'italic' }}>
+                        Non affecté
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <span className={`badge ${d.actif ? 'badge-success' : 'badge-secondary'}`}>
+                      {d.actif ? 'Actif' : 'Inactif'}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button
+                        className="btn btn-sm btn-info"
+                        onClick={() => {
+                          const selectedChefId = prompt(
+                            `Sélectionner un chef pour "${d.nom}"\n\n` +
+                            chefsDepartement
+                              .filter(chef => !chef.departement || chef.departement.id === d.id)
+                              .map((chef, idx) => `${idx + 1}. ${chef.prenom} ${chef.nom} (ID: ${chef.id})`)
+                              .join('\n') +
+                            '\n\nEntrez l\'ID du chef:'
+                          );
+
+                          if (selectedChefId) {
+                            handleAffecterChef(d.id, parseInt(selectedChefId));
+                          }
+                        }}
+                      >
+                        {chefActuel ? 'Modifier Chef' : 'Affecter Chef'}
+                      </button>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDeleteDepartement(d.id)}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {departements.length > 5 && (

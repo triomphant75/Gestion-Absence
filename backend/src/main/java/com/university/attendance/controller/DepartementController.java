@@ -104,4 +104,32 @@ public class DepartementController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
+    /**
+     * Affecte un chef au département
+     * PUT /api/departements/{id}/affecter-chef?chefId={chefId}
+     */
+    @PutMapping("/{id}/affecter-chef")
+    public ResponseEntity<?> affecterChef(@PathVariable Long id, @RequestParam Long chefId) {
+        try {
+            departementService.affecterChef(id, chefId);
+            return ResponseEntity.ok(Map.of("message", "Chef de département affecté avec succès"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Retire le chef du département
+     * PUT /api/departements/{id}/retirer-chef
+     */
+    @PutMapping("/{id}/retirer-chef")
+    public ResponseEntity<?> retirerChef(@PathVariable Long id) {
+        try {
+            departementService.retirerChef(id);
+            return ResponseEntity.ok(Map.of("message", "Chef de département retiré avec succès"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

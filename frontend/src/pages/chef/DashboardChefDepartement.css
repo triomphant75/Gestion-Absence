@@ -214,6 +214,48 @@
   margin-bottom: 1.5rem;
 }
 
+.etudiants-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.filter-section label {
+  font-weight: 600;
+  color: var(--text-color);
+  white-space: nowrap;
+}
+
+.formation-select {
+  padding: 0.5rem 1rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: var(--text-color);
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.formation-select:hover {
+  border-color: var(--primary-color);
+}
+
+.formation-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(76, 86, 255, 0.1);
+}
+
 .etudiants-table {
   background: white;
   border-radius: 12px;

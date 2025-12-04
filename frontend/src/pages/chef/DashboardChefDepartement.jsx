@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
+import ModalInformationsEtudiant from '../../components/chef/ModalInformationsEtudiant';
 import {
   MdDescription,
   MdWarning,
@@ -10,7 +11,7 @@ import {
   MdPeople,
   MdHistory
 } from 'react-icons/md';
-import { justificatifService, avertissementService, userService, presenceService } from '../../services/api';
+import { justificatifService, avertissementService, chefDepartementService, formationService } from '../../services/api';
 import './DashboardChefDepartement.css';
 
 function DashboardChefDepartement() {
@@ -19,6 +20,10 @@ function DashboardChefDepartement() {
   const [justificatifs, setJustificatifs] = useState([]);
   const [avertissements, setAvertissements] = useState([]);
   const [etudiants, setEtudiants] = useState([]);
+  const [formations, setFormations] = useState([]);
+  const [selectedFormation, setSelectedFormation] = useState('all');
+  const [selectedEtudiant, setSelectedEtudiant] = useState(null);
+  const [etudiantDetails, setEtudiantDetails] = useState(null);
   const [traitements, setTraitements] = useState([]);
   const [selectedJustif, setSelectedJustif] = useState(null);
   const [commentaire, setCommentaire] = useState('');
@@ -112,8 +117,15 @@ function DashboardChefDepartement() {
       loadAvertissements();
       loadEtudiants();
       loadTraitements();
+      loadFormations();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user && selectedFormation) {
+      loadEtudiants();
+    }
+  }, [selectedFormation]);
 
   const loadTraitements = async () => {
     try {
@@ -142,13 +154,48 @@ function DashboardChefDepartement() {
     }
   };
 
+  const loadFormations = async () => {
+    try {
+      if (user?.departement?.id) {
+        const response = await formationService.getByDepartement(user.departement.id);
+        setFormations(response.data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement formations:', error);
+    }
+  };
+
   const loadEtudiants = async () => {
     try {
-      const response = await userService.getByRole('ETUDIANT');
-      setEtudiants(response.data);
+      if (selectedFormation === 'all') {
+        const response = await chefDepartementService.getEtudiantsDuDepartement(user.id);
+        setEtudiants(response.data);
+      } else {
+        const response = await chefDepartementService.getEtudiantsByFormation(user.id, selectedFormation);
+        setEtudiants(response.data);
+      }
     } catch (error) {
       console.error('Erreur chargement étudiants:', error);
     }
+  };
+
+  const handleVoirInformations = async (etudiantId) => {
+    try {
+      setLoading(true);
+      const response = await chefDepartementService.getEtudiantDetails(user.id, etudiantId);
+      setEtudiantDetails(response.data);
+      setSelectedEtudiant(etudiantId);
+    } catch (error) {
+      console.error('Erreur chargement détails étudiant:', error);
+      setMessage({ type: 'error', text: 'Impossible de charger les informations de l\'étudiant' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedEtudiant(null);
+    setEtudiantDetails(null);
   };
 
   const handleValiderJustificatif = async (justifId) => {
@@ -452,66 +499,118 @@ function DashboardChefDepartement() {
     </div>
   );
 
-  const renderEtudiantsView = () => (
-    <div className="etudiants-section">
-      <h2>Liste des Étudiants ({etudiants.length})</h2>
-      {etudiants.length > 0 ? (
-        <>
-          <div className="etudiants-table">
-            <table>
-              <thead>
-                <tr>
-                  <th>Numéro</th>
-                  <th>Nom</th>
-                  <th>Prénom</th>
-                  <th>Email</th>
-                  <th>Formation</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {etudiantsPagination.paginatedItems.map((etudiant) => (
-                  <tr key={etudiant.id}>
-                    <td>{etudiant.numeroEtudiant}</td>
-                    <td>{etudiant.nom}</td>
-                    <td>{etudiant.prenom}</td>
-                    <td>{etudiant.email}</td>
-                    <td>{etudiant.formation?.nom || 'N/A'}</td>
-                    <td>
-                      <button
-                        className="btn btn-sm btn-info"
-                        onClick={async () => {
-                          try {
-                            const stats = await presenceService.getStatistiques(etudiant.id);
-                            console.log('Statistiques étudiant:', stats.data);
-                          } catch (error) {
-                            console.error('Erreur:', error);
-                          }
-                        }}
-                      >
-                        Voir Stats
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+  const renderEtudiantsView = () => {
+    const getStatutColor = (taux) => {
+      if (taux >= 80) return '#10b981';
+      if (taux >= 60) return '#f59e0b';
+      return '#ef4444';
+    };
+
+    return (
+      <div className="etudiants-section">
+        <div className="etudiants-header">
+          <h2>Liste des Étudiants ({etudiants.length})</h2>
+          <div className="filter-section">
+            <label htmlFor="formation-filter">Filtrer par formation:</label>
+            <select
+              id="formation-filter"
+              value={selectedFormation}
+              onChange={(e) => setSelectedFormation(e.target.value)}
+              className="formation-select"
+            >
+              <option value="all">Toutes les formations</option>
+              {formations.map((formation) => (
+                <option key={formation.id} value={formation.id}>
+                  {formation.nom}
+                </option>
+              ))}
+            </select>
           </div>
-          {etudiants.length > 5 && (
-            <Pagination
-              currentPage={etudiantsPagination.currentPage}
-              totalPages={etudiantsPagination.totalPages}
-              onPageChange={etudiantsPagination.goToPage}
-              hasNextPage={etudiantsPagination.hasNextPage}
-              hasPreviousPage={etudiantsPagination.hasPreviousPage}
-            />
-          )}
-        </>
-      ) : (
-        <p className="no-data">Aucun étudiant</p>
-      )}
-    </div>
-  );
+        </div>
+
+        {etudiants.length > 0 ? (
+          <>
+            <div className="etudiants-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Numéro</th>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th>Email</th>
+                    <th>Formation</th>
+                    <th>Taux Présence</th>
+                    <th>Absences</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {etudiantsPagination.paginatedItems.map((etudiant) => {
+                    const stats = etudiant.statistiques || {};
+                    const tauxPresence = stats.tauxPresence || 0;
+
+                    return (
+                      <tr key={etudiant.id}>
+                        <td>{etudiant.numeroEtudiant}</td>
+                        <td>{etudiant.nom}</td>
+                        <td>{etudiant.prenom}</td>
+                        <td>{etudiant.email}</td>
+                        <td>{etudiant.formation?.nom || 'N/A'}</td>
+                        <td>
+                          <span
+                            className="taux-badge"
+                            style={{
+                              backgroundColor: getStatutColor(tauxPresence),
+                              color: 'white',
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            {tauxPresence}%
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ fontSize: '0.9rem' }}>
+                            <div style={{ color: '#ef4444' }}>
+                              Non justifiées: {stats.absencesNonJustifiees || 0}
+                            </div>
+                            <div style={{ color: '#6b7280' }}>
+                              Justifiées: {stats.absencesJustifiees || 0}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-info"
+                            onClick={() => handleVoirInformations(etudiant.id)}
+                            disabled={loading}
+                          >
+                            Voir Informations
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {etudiants.length > 5 && (
+              <Pagination
+                currentPage={etudiantsPagination.currentPage}
+                totalPages={etudiantsPagination.totalPages}
+                onPageChange={etudiantsPagination.goToPage}
+                hasNextPage={etudiantsPagination.hasNextPage}
+                hasPreviousPage={etudiantsPagination.hasPreviousPage}
+              />
+            )}
+          </>
+        ) : (
+          <p className="no-data">Aucun étudiant</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <DashboardLayout menuItems={menuItems}>
@@ -527,6 +626,13 @@ function DashboardChefDepartement() {
         {activeView === 'statistiques' && renderStatistiquesView()}
         {activeView === 'etudiants' && renderEtudiantsView()}
       </div>
+
+      {selectedEtudiant && etudiantDetails && (
+        <ModalInformationsEtudiant
+          etudiant={etudiantDetails}
+          onClose={handleCloseModal}
+        />
+      )}
     </DashboardLayout>
   );
 }

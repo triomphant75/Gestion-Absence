@@ -137,7 +137,9 @@ export const departementService = {
   create: (departement) => api.post('/departements', departement),
   update: (id, departement) => api.put(`/departements/${id}`, departement),
   deactivate: (id) => api.put(`/departements/${id}/deactivate`),
-  delete: (id) => api.delete(`/departements/${id}`)
+  delete: (id) => api.delete(`/departements/${id}`),
+  affecterChef: (departementId, chefId) => api.put(`/departements/${departementId}/affecter-chef?chefId=${chefId}`),
+  retirerChef: (departementId) => api.put(`/departements/${departementId}/retirer-chef`)
 };
 
 // ==================== FORMATIONS ====================
@@ -194,6 +196,13 @@ export const groupeEtudiantService = {
     api.delete(`/groupe-etudiants/groupe/${groupeId}/all`),
   verifier: (etudiantId, groupeId) =>
     api.get(`/groupe-etudiants/verifier?etudiantId=${etudiantId}&groupeId=${groupeId}`)
+};
+
+// ==================== CHEF DE DÉPARTEMENT ====================
+export const chefDepartementService = {
+  getEtudiantsDuDepartement: (chefId) => api.get(`/chef-departement/${chefId}/etudiants`),
+  getEtudiantsByFormation: (chefId, formationId) => api.get(`/chef-departement/${chefId}/etudiants/formation/${formationId}`),
+  getEtudiantDetails: (chefId, etudiantId) => api.get(`/chef-departement/${chefId}/etudiant/${etudiantId}`)
 };
 
 export default api;
