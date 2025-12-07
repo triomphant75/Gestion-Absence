@@ -47,7 +47,18 @@ export const userService = {
   getById: (id) => api.get(`/users/${id}`),
   getByEmail: (email) => api.get(`/users/email/${email}`),
   getByRole: (role) => api.get(`/users/role/${role}`),
+  getEtudiants: () => api.get('/users/role/ETUDIANT'),
+  getEnseignants: () => api.get('/users/role/ENSEIGNANT'),
   create: (user) => api.post('/users', user),
+  createEtudiant: (etudiant) => {
+    const payload = {
+      ...etudiant,
+      role: 'ETUDIANT',
+      formation: etudiant.formationId ? { id: parseInt(etudiant.formationId) } : null
+    };
+    delete payload.formationId;
+    return api.post('/users', payload);
+  },
   update: (id, user) => api.put(`/users/${id}`, user),
   delete: (id) => api.delete(`/users/${id}`),
   deactivate: (id) => api.put(`/users/${id}/deactivate`)

@@ -75,6 +75,9 @@ public class DataInitializer implements CommandLineRunner {
         // Admin
         createUserIfMissing("admin@university.com", "Admin", "Système", Role.ADMIN, null, null, encodedPassword);
 
+        // Secrétariat
+        createUserIfMissing("secretariat@university.com", "Dupuis", "Isabelle", Role.SECRETARIAT, "SEC001", null, encodedPassword);
+
         // Chefs de département
         createUserIfMissing("chef.info@university.com", "Dubois", "Pierre", Role.CHEF_DEPARTEMENT, "CD001", info, encodedPassword);
         createUserIfMissing("chef.math@university.com", "Lefebvre", "Marie", Role.CHEF_DEPARTEMENT, "CD002", math, encodedPassword);
@@ -226,11 +229,12 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("========================================");
         System.out.println("- Départements créés: 3");
         System.out.println("- Formations créées: 10");
-        System.out.println("- Utilisateurs créés: 26 (1 admin, 3 chefs dept, 7 enseignants, 15 étudiants)");
+        System.out.println("- Utilisateurs créés: 27 (1 admin, 1 secrétariat, 3 chefs dept, 7 enseignants, 15 étudiants)");
         System.out.println("- Matières créées: 15");
         System.out.println("========================================");
         System.out.println("Identifiants de connexion:");
-        System.out.println("  Email: admin@university.com | Mot de passe: password123");
+        System.out.println("  Admin: admin@university.com | Mot de passe: password123");
+        System.out.println("  Secrétariat: secretariat@university.com | Mot de passe: password123");
         System.out.println("  (Tous les comptes utilisent le mot de passe: password123)");
         System.out.println("========================================");
     }

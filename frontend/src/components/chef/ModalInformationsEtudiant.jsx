@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { MdClose, MdCheckCircle, MdCancel, MdWarning } from 'react-icons/md';
 import './ModalInformationsEtudiant.css';
 
@@ -6,15 +6,6 @@ function ModalInformationsEtudiant({ etudiant, onClose }) {
   const [activeTab, setActiveTab] = useState('general');
 
   if (!etudiant) return null;
-
-  const stats = etudiant.statistiquesGlobales || {};
-  const tauxPresence = stats.tauxPresence || 0;
-
-  const getStatutColor = (taux) => {
-    if (taux >= 80) return '#10b981';
-    if (taux >= 60) return '#f59e0b';
-    return '#ef4444';
-  };
 
   const renderGeneralTab = () => (
     <div className="tab-content">
@@ -54,46 +45,6 @@ function ModalInformationsEtudiant({ etudiant, onClose }) {
           <div className="info-item">
             <label>Description</label>
             <p>{etudiant.formation?.description || 'Non renseignée'}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="info-section">
-        <h3>Statistiques de Présence</h3>
-        <div className="stats-cards">
-          <div className="stat-card">
-            <div className="stat-value">{stats.totalSeances || 0}</div>
-            <div className="stat-label">Total Séances</div>
-          </div>
-          <div className="stat-card success">
-            <div className="stat-value">{stats.presents || 0}</div>
-            <div className="stat-label">Présences</div>
-          </div>
-          <div className="stat-card danger">
-            <div className="stat-value">{stats.absences || 0}</div>
-            <div className="stat-label">Absences</div>
-          </div>
-          <div className="stat-card warning">
-            <div className="stat-value">{stats.retards || 0}</div>
-            <div className="stat-label">Retards</div>
-          </div>
-        </div>
-
-        <div className="taux-presence">
-          <div className="taux-header">
-            <h4>Taux de Présence</h4>
-            <span className="taux-value" style={{ color: getStatutColor(tauxPresence) }}>
-              {tauxPresence}%
-            </span>
-          </div>
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{
-                width: `${tauxPresence}%`,
-                backgroundColor: getStatutColor(tauxPresence)
-              }}
-            ></div>
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import DashboardEtudiant from './pages/etudiant/DashboardEtudiant';
 import DashboardEnseignant from './pages/enseignant/DashboardEnseignant';
 import DashboardChefDepartement from './pages/chef/DashboardChefDepartement';
+import DashboardSecretariat from './pages/secretariat/DashboardSecretariat';
 import DashboardAdmin from './pages/admin/DashboardAdmin';
 
 // Composant pour protéger les routes
@@ -42,6 +43,8 @@ function AppContent() {
         return '/enseignant/dashboard';
       case 'CHEF_DEPARTEMENT':
         return '/chef/dashboard';
+      case 'SECRETARIAT':
+        return '/secretariat/dashboard';
       case 'ADMIN':
       case 'SUPER_ADMIN':
         return '/admin/dashboard';
@@ -88,6 +91,16 @@ function AppContent() {
           element={
             <PrivateRoute roles="CHEF_DEPARTEMENT">
               <DashboardChefDepartement />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Routes Secrétariat */}
+        <Route
+          path="/secretariat/dashboard"
+          element={
+            <PrivateRoute roles="SECRETARIAT">
+              <DashboardSecretariat />
             </PrivateRoute>
           }
         />

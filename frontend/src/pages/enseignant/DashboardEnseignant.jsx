@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/layout/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
-import { MdCalendarToday, MdCheckCircle, MdPeople } from 'react-icons/md';
+import { MdCalendarToday, MdCheckCircle, MdPeople, MdFilterList } from 'react-icons/md';
 import { seanceService, presenceService } from '../../services/api';
 import './DashboardEnseignant.css';
 
@@ -21,14 +21,72 @@ function DashboardEnseignant() {
   const [presenceEdits, setPresenceEdits] = useState({});
   const [presenceSaving, setPresenceSaving] = useState({});
   const [selectedSeanceForPresences, setSelectedSeanceForPresences] = useState(null);
-  
+
   //états pour la liste des étudiants
   const [etudiantsInscrits, setEtudiantsInscrits] = useState([]);
   const [selectedSeanceForEtudiants, setSelectedSeanceForEtudiants] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Pagination
-  const seancesPagination = usePagination(mesSeances, 5);
+  // Filtres pour les séances
+  const [filterStatut, setFilterStatut] = useState('TOUS');
+  const [filterMatiere, setFilterMatiere] = useState('TOUS');
+  const [filterPeriode, setFilterPeriode] = useState('TOUS');
+
+  // Filtrer les séances
+  const filteredSeances = useMemo(() => {
+    return mesSeances.filter(seance => {
+      // Filtre par statut
+      if (filterStatut !== 'TOUS' && seance.statut !== filterStatut) {
+        return false;
+      }
+
+      // Filtre par matière
+      if (filterMatiere !== 'TOUS' && seance.matiere?.id !== parseInt(filterMatiere)) {
+        return false;
+      }
+
+      // Filtre par période
+      if (filterPeriode !== 'TOUS') {
+        const now = new Date();
+        const seanceDate = new Date(seance.dateDebut);
+
+        if (filterPeriode === 'PASSEES') {
+          if (seanceDate > now) return false;
+        } else if (filterPeriode === 'A_VENIR') {
+          if (seanceDate <= now) return false;
+        } else if (filterPeriode === 'AUJOURD_HUI') {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          if (seanceDate < today || seanceDate >= tomorrow) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [mesSeances, filterStatut, filterMatiere, filterPeriode]);
+
+  // Liste unique des matières pour le filtre
+  const matieresList = useMemo(() => {
+    const matieres = mesSeances
+      .map(s => s.matiere)
+      .filter(m => m != null);
+
+    // Dédupliquer par ID
+    const uniqueMatieres = [];
+    const ids = new Set();
+    for (const m of matieres) {
+      if (!ids.has(m.id)) {
+        ids.add(m.id);
+        uniqueMatieres.push(m);
+      }
+    }
+    return uniqueMatieres;
+  }, [mesSeances]);
+
+  // Pagination sur les séances filtrées
+  const seancesPagination = usePagination(filteredSeances, 5);
   
   // Filtrer les étudiants selon la recherche
   const filteredEtudiants = etudiantsInscrits.filter(etudiant => {
@@ -225,7 +283,73 @@ function DashboardEnseignant() {
 
   const renderSeancesView = () => (
     <div className="seances-section">
-      <h2>Mes Séances ({mesSeances.length})</h2>
+      <div className="seances-header-with-filters">
+        <h2>Mes Séances ({filteredSeances.length} / {mesSeances.length})</h2>
+
+        <div className="filters-container">
+          <div className="filter-group">
+            <label>
+              <MdFilterList style={{ marginRight: '5px' }} />
+              Statut:
+            </label>
+            <select
+              value={filterStatut}
+              onChange={(e) => setFilterStatut(e.target.value)}
+              className="filter-select"
+            >
+              <option value="TOUS">Tous les statuts</option>
+              <option value="PREVUE">Prévue</option>
+              <option value="EN_COURS">En cours</option>
+              <option value="TERMINEE">Terminée</option>
+              <option value="ANNULEE">Annulée</option>
+              <option value="REPORTEE">Reportée</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Matière:</label>
+            <select
+              value={filterMatiere}
+              onChange={(e) => setFilterMatiere(e.target.value)}
+              className="filter-select"
+            >
+              <option value="TOUS">Toutes les matières</option>
+              {matieresList.map((matiere) => (
+                <option key={matiere.id} value={matiere.id}>
+                  {matiere.nom}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Période:</label>
+            <select
+              value={filterPeriode}
+              onChange={(e) => setFilterPeriode(e.target.value)}
+              className="filter-select"
+            >
+              <option value="TOUS">Toutes les périodes</option>
+              <option value="AUJOURD_HUI">Aujourd'hui</option>
+              <option value="A_VENIR">À venir</option>
+              <option value="PASSEES">Passées</option>
+            </select>
+          </div>
+
+          {(filterStatut !== 'TOUS' || filterMatiere !== 'TOUS' || filterPeriode !== 'TOUS') && (
+            <button
+              className="btn btn-sm btn-secondary"
+              onClick={() => {
+                setFilterStatut('TOUS');
+                setFilterMatiere('TOUS');
+                setFilterPeriode('TOUS');
+              }}
+            >
+              Réinitialiser les filtres
+            </button>
+          )}
+        </div>
+      </div>
 
       {seanceActive && currentCode && (
         <div className="active-seance-banner">
@@ -260,7 +384,7 @@ function DashboardEnseignant() {
       )}
 
       <div className="seances-list">
-        {mesSeances.length > 0 ? (
+        {filteredSeances.length > 0 ? (
           <>
             {seancesPagination.paginatedItems.map((seance) => (
               <div key={seance.id} className="seance-card">
@@ -314,7 +438,7 @@ function DashboardEnseignant() {
                 </div>
               </div>
             ))}
-            {mesSeances.length > 5 && (
+            {filteredSeances.length > 5 && (
               <Pagination
                 currentPage={seancesPagination.currentPage}
                 totalPages={seancesPagination.totalPages}
@@ -325,7 +449,11 @@ function DashboardEnseignant() {
             )}
           </>
         ) : (
-          <p className="no-data">Aucune séance programmée</p>
+          <p className="no-data">
+            {mesSeances.length > 0
+              ? 'Aucune séance ne correspond aux filtres sélectionnés'
+              : 'Aucune séance programmée'}
+          </p>
         )}
       </div>
     </div>
