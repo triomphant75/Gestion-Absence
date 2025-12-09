@@ -102,6 +102,14 @@ public class UserService {
     }
 
     /**
+     * Trouve tous les étudiants d'une formation qui ne sont pas encore affectés à un groupe
+     * Utilisé pour l'affectation des étudiants aux groupes (interface secrétariat)
+     */
+    public List<User> getEtudiantsSansGroupeByFormation(Long formationId) {
+        return userRepository.findEtudiantsSansGroupeByFormation(formationId, Role.ETUDIANT);
+    }
+
+    /**
      * Trouve tous les enseignants d'un département
      */
     public List<User> getEnseignantsByDepartement(Long departementId) {

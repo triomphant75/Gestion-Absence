@@ -39,6 +39,7 @@ function DashboardSecretariat() {
   // États pour gestion des étudiants d'un groupe
   const [selectedGroupeForStudents, setSelectedGroupeForStudents] = useState(null);
   const [groupeEtudiants, setGroupeEtudiants] = useState([]);
+  const [etudiantsDisponibles, setEtudiantsDisponibles] = useState([]);
 
   const [newEtudiant, setNewEtudiant] = useState({
     nom: '',
@@ -216,34 +217,38 @@ function DashboardSecretariat() {
     }
   };
 
-  const loadGroupeEtudiants = async (groupeId) => {
+  const loadGroupeEtudiants = async (groupeId, formationId) => {
     try {
-      const response = await groupeEtudiantService.getEtudiantsGroupe(groupeId);
-      setGroupeEtudiants(response.data);
+      const [etudiantsGroupeRes, etudiantsDispoRes] = await Promise.all([
+        groupeEtudiantService.getEtudiantsGroupe(groupeId),
+        userService.getEtudiantsSansGroupe(formationId)
+      ]);
+      setGroupeEtudiants(etudiantsGroupeRes.data);
+      setEtudiantsDisponibles(etudiantsDispoRes.data);
     } catch (error) {
       console.error('Erreur chargement étudiants du groupe:', error);
       setMessage({ type: 'error', text: 'Erreur lors du chargement des étudiants du groupe' });
     }
   };
 
-  const handleAjouterEtudiantAuGroupe = async (groupeId, etudiantId) => {
+  const handleAjouterEtudiantAuGroupe = async (groupeId, etudiantId, formationId) => {
     try {
       await groupeEtudiantService.affecter(etudiantId, groupeId);
       setMessage({ type: 'success', text: 'Étudiant ajouté au groupe avec succès' });
-      loadGroupeEtudiants(groupeId);
+      loadGroupeEtudiants(groupeId, formationId);
       loadData();
     } catch (error) {
       setMessage({ type: 'error', text: error.response?.data || 'Erreur lors de l\'ajout de l\'étudiant au groupe' });
     }
   };
 
-  const handleRetirerEtudiantDuGroupe = async (groupeId, etudiantId) => {
+  const handleRetirerEtudiantDuGroupe = async (groupeId, etudiantId, formationId) => {
     if (!window.confirm('Êtes-vous sûr de vouloir retirer cet étudiant du groupe ?')) return;
 
     try {
       await groupeEtudiantService.retirer(etudiantId, groupeId);
       setMessage({ type: 'success', text: 'Étudiant retiré du groupe avec succès' });
-      loadGroupeEtudiants(groupeId);
+      loadGroupeEtudiants(groupeId, formationId);
       loadData();
     } catch (error) {
       setMessage({ type: 'error', text: 'Erreur lors du retrait de l\'étudiant du groupe' });
@@ -485,7 +490,7 @@ function DashboardSecretariat() {
                       className="btn btn-sm btn-primary"
                       onClick={() => {
                         setSelectedGroupeForStudents(groupe);
-                        loadGroupeEtudiants(groupe.id);
+                        loadGroupeEtudiants(groupe.id, groupe.formation?.id);
                       }}
                     >
                       Gérer Étudiants
@@ -528,21 +533,18 @@ function DashboardSecretariat() {
                 <select
                   onChange={(e) => {
                     if (e.target.value) {
-                      handleAjouterEtudiantAuGroupe(selectedGroupeForStudents.id, e.target.value);
+                      handleAjouterEtudiantAuGroupe(selectedGroupeForStudents.id, e.target.value, selectedGroupeForStudents.formation?.id);
                       e.target.value = '';
                     }
                   }}
                   className="form-control"
                 >
                   <option value="">Sélectionner un étudiant</option>
-                  {etudiants
-                    .filter(etudiant => etudiant.formation?.id === selectedGroupeForStudents.formation?.id)
-                    .filter(etudiant => !groupeEtudiants.find(ge => ge.etudiant?.id === etudiant.id))
-                    .map(etudiant => (
-                      <option key={etudiant.id} value={etudiant.id}>
-                        {etudiant.prenom} {etudiant.nom} ({etudiant.numeroEtudiant})
-                      </option>
-                    ))}
+                  {etudiantsDisponibles.map(etudiant => (
+                    <option key={etudiant.id} value={etudiant.id}>
+                      {etudiant.prenom} {etudiant.nom} ({etudiant.numeroEtudiant})
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -569,7 +571,7 @@ function DashboardSecretariat() {
                           <td>
                             <button
                               className="btn btn-sm btn-danger"
-                              onClick={() => handleRetirerEtudiantDuGroupe(selectedGroupeForStudents.id, ge.etudiant?.id)}
+                              onClick={() => handleRetirerEtudiantDuGroupe(selectedGroupeForStudents.id, ge.etudiant?.id, selectedGroupeForStudents.formation?.id)}
                             >
                               Retirer
                             </button>
@@ -611,7 +613,11 @@ function DashboardSecretariat() {
                 <label>Matière *</label>
                 <select
                   value={newSeance.matiereId}
-                  onChange={(e) => setNewSeance({ ...newSeance, matiereId: e.target.value })}
+                  onChange={(e) => {
+                    const mid = e.target.value;
+                    const mat = matieres.find(m => m.id === parseInt(mid));
+                    setNewSeance({ ...newSeance, matiereId: mid, groupeId: '', enseignantId: mat?.enseignant?.id || '' });
+                  }}
                   required
                 >
                   <option value="">Sélectionner une matière</option>
@@ -626,6 +632,7 @@ function DashboardSecretariat() {
                   value={newSeance.enseignantId}
                   onChange={(e) => setNewSeance({ ...newSeance, enseignantId: e.target.value })}
                   required
+                  disabled={!!matieres.find(m => m.id === parseInt(newSeance.matiereId))?.enseignant}
                 >
                   <option value="">Sélectionner un enseignant</option>
                   {enseignants.map(e => (

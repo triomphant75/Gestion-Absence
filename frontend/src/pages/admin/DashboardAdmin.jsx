@@ -93,7 +93,7 @@ function DashboardAdmin() {
   const [editingGroupe, setEditingGroupe] = useState(null);
   const [selectedGroupeForStudents, setSelectedGroupeForStudents] = useState(null);
   const [groupeEtudiants, setGroupeEtudiants] = useState([]);
-  const [formationEtudiants, setFormationEtudiants] = useState([]);
+  const [etudiantsDisponibles, setEtudiantsDisponibles] = useState([]);
 
   const [seances, setSeances] = useState([]);
   const [enseignants, setEnseignants] = useState([]);
@@ -177,6 +177,15 @@ function DashboardAdmin() {
       loadAllData();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (message.text) {
+      const timer = setTimeout(() => {
+        setMessage({ type: '', text: '' });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
 
   const loadAllData = async () => {
     try {
@@ -688,16 +697,14 @@ function DashboardAdmin() {
         return;
       }
 
-      // Charger les étudiants du groupe
-      const groupeResponse = await groupeEtudiantService.getEtudiantsGroupe(groupeId);
-      setGroupeEtudiants(groupeResponse.data);
+      // Charger les étudiants du groupe et les étudiants disponibles (sans groupe) en parallèle
+      const [groupeResponse, etudiantsDispoRes] = await Promise.all([
+        groupeEtudiantService.getEtudiantsGroupe(groupeId),
+        userService.getEtudiantsSansGroupe(groupe.formation.id)
+      ]);
 
-      // Charger TOUS les étudiants de la formation
-      const allStudentsResponse = await userService.getByRole('ETUDIANT');
-      const etudiantsFormation = allStudentsResponse.data.filter(
-        s => s.formation?.id === groupe.formation.id
-      );
-      setFormationEtudiants(etudiantsFormation);
+      setGroupeEtudiants(groupeResponse.data);
+      setEtudiantsDisponibles(etudiantsDispoRes.data);
 
     } catch (error) {
       console.error('Erreur chargement étudiants du groupe:', error);
@@ -2168,52 +2175,67 @@ function DashboardAdmin() {
             <div className="modal-body">
               <div className="students-section">
                 <h4>Formation : {selectedGroupeForStudents.formation?.nom}</h4>
-                <p className="text-muted">
-                  Cochez les étudiants qui font partie de ce groupe
-                </p>
 
-                {formationEtudiants.length > 0 ? (
-                  <div className="students-list">
-                    {formationEtudiants.map((etudiant) => {
-                      // Vérifier si l'étudiant est dans le groupe
-                      const isInGroupe = groupeEtudiants.some(ge => ge.etudiant.id === etudiant.id);
+                {/* Section : Ajouter un étudiant */}
+                <div className="form-group">
+                  <label>Ajouter un étudiant au groupe</label>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleAddStudentToGroupe(e.target.value, selectedGroupeForStudents.id);
+                        e.target.value = '';
+                      }
+                    }}
+                    className="form-control"
+                  >
+                    <option value="">Sélectionner un étudiant disponible</option>
+                    {etudiantsDisponibles.map((etudiant) => (
+                      <option key={etudiant.id} value={etudiant.id}>
+                        {etudiant.prenom} {etudiant.nom} ({etudiant.numeroEtudiant})
+                      </option>
+                    ))}
+                  </select>
+                  {etudiantsDisponibles.length === 0 && (
+                    <p className="text-muted" style={{ marginTop: '10px', fontSize: '0.9em' }}>
+                      Tous les étudiants de cette formation sont déjà affectés à un groupe.
+                    </p>
+                  )}
+                </div>
 
-                      return (
-                        <div key={etudiant.id} className="student-item">
-                          <div className="student-info">
-                            <strong>{etudiant.nom} {etudiant.prenom}</strong>
-                            <span className="student-number">{etudiant.numeroEtudiant}</span>
-                          </div>
-                          {isInGroupe ? (
-                            <button
-                              className="btn btn-sm btn-danger"
-                              onClick={() => handleRemoveStudentFromGroupe(etudiant.id, selectedGroupeForStudents.id)}
-                            >
-                              ✓ Dans le groupe - Retirer
-                            </button>
-                          ) : (
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => handleAddStudentToGroupe(etudiant.id, selectedGroupeForStudents.id)}
-                            >
-                              + Ajouter au groupe
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="no-data-sm">
-                    Aucun étudiant dans la formation {selectedGroupeForStudents.formation?.nom}.
-                    Créez d'abord des étudiants pour cette formation.
-                  </p>
-                )}
-
-                <div className="modal-footer">
-                  <p className="text-muted">
-                    {groupeEtudiants.length} / {formationEtudiants.length} étudiants dans le groupe
-                  </p>
+                {/* Section : Étudiants dans le groupe */}
+                <div className="groupes-list" style={{ marginTop: '20px' }}>
+                  <h4>Étudiants dans ce groupe ({groupeEtudiants.length})</h4>
+                  {groupeEtudiants.length > 0 ? (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Numéro</th>
+                          <th>Nom</th>
+                          <th>Prénom</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupeEtudiants.map((ge) => (
+                          <tr key={ge.id}>
+                            <td><strong>{ge.etudiant?.numeroEtudiant}</strong></td>
+                            <td>{ge.etudiant?.nom}</td>
+                            <td>{ge.etudiant?.prenom}</td>
+                            <td>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleRemoveStudentFromGroupe(ge.etudiant?.id, selectedGroupeForStudents.id)}
+                              >
+                                Retirer
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p className="no-data-sm">Aucun étudiant dans ce groupe</p>
+                  )}
                 </div>
               </div>
             </div>

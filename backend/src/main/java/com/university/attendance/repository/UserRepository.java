@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.university.attendance.model.Role;
@@ -71,4 +73,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
      * Utilisé pour les CM (cours magistraux)
      */
     List<User> findByFormationIdAndRoleAndActif(Long formationId, Role role, Boolean actif);
+
+    /**
+     * Trouve tous les étudiants d'une formation qui ne sont pas encore affectés à un groupe
+     * Utilisé pour l'affectation des étudiants aux groupes (interface secrétariat)
+     */
+    @Query("SELECT u FROM User u WHERE u.formation.id = :formationId " +
+           "AND u.role = :role " +
+           "AND u.actif = true " +
+           "AND u.id NOT IN (SELECT ge.etudiant.id FROM GroupeEtudiant ge)")
+    List<User> findEtudiantsSansGroupeByFormation(@Param("formationId") Long formationId, @Param("role") Role role);
 }

@@ -48,6 +48,7 @@ export const userService = {
   getByEmail: (email) => api.get(`/users/email/${email}`),
   getByRole: (role) => api.get(`/users/role/${role}`),
   getEtudiants: () => api.get('/users/role/ETUDIANT'),
+  getEtudiantsSansGroupe: (formationId) => api.get(`/users/formation/${formationId}/etudiants/sans-groupe`),
   getEnseignants: () => api.get('/users/role/ENSEIGNANT'),
   create: (user) => api.post('/users', user),
   createEtudiant: (etudiant) => {

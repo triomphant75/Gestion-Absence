@@ -99,6 +99,16 @@ public class UserController {
     }
 
     /**
+     * Obtient tous les étudiants d'une formation qui ne sont pas encore affectés à un groupe
+     * GET /api/users/formation/{formationId}/etudiants/sans-groupe
+     * Utilisé par le secrétariat pour l'affectation des étudiants aux groupes
+     */
+    @GetMapping("/formation/{formationId}/etudiants/sans-groupe")
+    public ResponseEntity<List<User>> getEtudiantsSansGroupeByFormation(@PathVariable Long formationId) {
+        return ResponseEntity.ok(userService.getEtudiantsSansGroupeByFormation(formationId));
+    }
+
+    /**
      * Obtient tous les enseignants d'un département
      * GET /api/users/departement/{departementId}/enseignants
      */
