@@ -34,7 +34,7 @@ function DashboardEnseignant() {
 
   // Filtrer les séances
   const filteredSeances = useMemo(() => {
-    return mesSeances.filter(seance => {
+    const filtered = mesSeances.filter(seance => {
       // Filtre par statut
       if (filterStatut !== 'TOUS' && seance.statut !== filterStatut) {
         return false;
@@ -65,6 +65,8 @@ function DashboardEnseignant() {
 
       return true;
     });
+    console.log('Séances filtrées:', filtered.length, 'sur', mesSeances.length);
+    return filtered;
   }, [mesSeances, filterStatut, filterMatiere, filterPeriode]);
 
   // Liste unique des matières pour le filtre
@@ -157,10 +159,14 @@ function DashboardEnseignant() {
 
   const loadSeances = async () => {
     try {
+      console.log('Chargement des séances pour l\'enseignant ID:', user.id);
       const response = await seanceService.getByEnseignant(user.id);
+      console.log('Séances chargées:', response.data);
+      console.log('Nombre de séances:', response.data.length);
       setMesSeances(response.data);
     } catch (error) {
       console.error('Erreur chargement séances:', error);
+      setMessage({ type: 'error', text: 'Erreur lors du chargement des séances' });
     }
   };
 
@@ -180,6 +186,8 @@ function DashboardEnseignant() {
         displayMessage = '⚠️ Attention : Vous ne pouvez plus lancer cette séance car elle est déjà terminée.';
       } else if (errorMessage.includes('annulée')) {
         displayMessage = '⚠️ Attention : Vous ne pouvez plus lancer cette séance car elle a été annulée.';
+      } else if (errorMessage.includes('heure de fin est dépassée')) {
+        displayMessage = '⚠️ Attention : Impossible de démarrer la séance, l\'heure de fin est dépassée.';
       } else if (errorMessage) {
         displayMessage = errorMessage;
       }
@@ -415,12 +423,24 @@ function DashboardEnseignant() {
                 </div>
                 <div className="seance-actions">
                   {(seance.statut === 'PREVUE' || seance.statut === 'REPORTEE') && (
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => startSeance(seance.id)}
-                    >
-                      Lancer la Séance
-                    </button>
+                    <>
+                      {new Date(seance.dateFin) < new Date() ? (
+                        <button
+                          className="btn btn-secondary"
+                          disabled
+                          title="Impossible de démarrer : l'heure de fin est dépassée"
+                        >
+                          Séance expirée
+                        </button>
+                      ) : (
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => startSeance(seance.id)}
+                        >
+                          Lancer la Séance
+                        </button>
+                      )}
+                    </>
                   )}
                   <button
                     className="btn btn-secondary"

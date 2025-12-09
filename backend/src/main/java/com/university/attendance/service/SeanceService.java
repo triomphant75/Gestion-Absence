@@ -91,6 +91,11 @@ public class SeanceService {
             throw new RuntimeException("Cette séance est annulée");
         }
 
+        // Vérifier si l'heure de fin de la séance est dépassée
+        if (seance.getDateFin() != null && LocalDateTime.now().isAfter(seance.getDateFin())) {
+            throw new RuntimeException("Impossible de démarrer la séance : l'heure de fin est dépassée");
+        }
+
         // Génère un nouveau code dynamique
         String code = generateDynamicCode();
         seance.setCodeDynamique(code);
@@ -228,10 +233,10 @@ public class SeanceService {
     }
 
     /**
-     * Trouve les séances d'un enseignant
+     * Trouve les séances d'un enseignant (incluant les séances annulées pour avoir une vue complète)
      */
     public List<Seance> getSeancesByEnseignant(Long enseignantId) {
-        return seanceRepository.findByEnseignantIdAndAnnulee(enseignantId, false);
+        return seanceRepository.findByEnseignantId(enseignantId);
     }
 
     /**

@@ -185,7 +185,10 @@ public class SeanceController {
      */
     @GetMapping("/enseignant/{enseignantId}")
     public ResponseEntity<List<Seance>> getSeancesByEnseignant(@PathVariable Long enseignantId) {
-        return ResponseEntity.ok(seanceService.getSeancesByEnseignant(enseignantId));
+        List<Seance> seances = seanceService.getSeancesByEnseignant(enseignantId);
+        System.out.println("DEBUG - Récupération séances pour enseignant ID: " + enseignantId);
+        System.out.println("DEBUG - Nombre de séances trouvées: " + seances.size());
+        return ResponseEntity.ok(seances);
     }
 
     /**
