@@ -60,7 +60,6 @@ function DashboardSecretariat() {
   const [newSeance, setNewSeance] = useState({
     matiereId: '',
     enseignantId: '',
-    typeSeance: 'CM',
     dateDebut: '',
     dateFin: '',
     salle: '',
@@ -173,14 +172,92 @@ function DashboardSecretariat() {
 
   const handleAddSeance = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setMessage({ type: '', text: '' });
+
     try {
-      await seanceService.create(newSeance);
+      // Validation stricte
+      if (!newSeance.matiereId || newSeance.matiereId === '') {
+        setMessage({ type: 'error', text: 'Veuillez sélectionner une matière' });
+        setLoading(false);
+        return;
+      }
+
+      if (!newSeance.enseignantId || newSeance.enseignantId === '') {
+        setMessage({ type: 'error', text: 'Veuillez sélectionner un enseignant' });
+        setLoading(false);
+        return;
+      }
+
+      if (!newSeance.dateDebut || newSeance.dateDebut === '') {
+        setMessage({ type: 'error', text: 'Veuillez sélectionner une date de début' });
+        setLoading(false);
+        return;
+      }
+
+      if (!newSeance.dateFin || newSeance.dateFin === '') {
+        setMessage({ type: 'error', text: 'Veuillez sélectionner une date de fin' });
+        setLoading(false);
+        return;
+      }
+
+      if (!newSeance.salle || newSeance.salle.trim() === '') {
+        setMessage({ type: 'error', text: 'Veuillez entrer une salle' });
+        setLoading(false);
+        return;
+      }
+
+      const matiereIdInt = parseInt(newSeance.matiereId);
+      const enseignantIdInt = parseInt(newSeance.enseignantId);
+
+      if (isNaN(matiereIdInt) || matiereIdInt <= 0) {
+        setMessage({ type: 'error', text: 'ID de matière invalide' });
+        setLoading(false);
+        return;
+      }
+
+      if (isNaN(enseignantIdInt) || enseignantIdInt <= 0) {
+        setMessage({ type: 'error', text: 'ID d\'enseignant invalide' });
+        setLoading(false);
+        return;
+      }
+
+      const matiere = matieres.find(m => m.id === matiereIdInt);
+
+      // Si TD_TP, vérifier qu'un groupe est sélectionné
+      if (matiere?.typeSeance === 'TD_TP' && (!newSeance.groupeId || newSeance.groupeId === '')) {
+        setMessage({ type: 'error', text: 'Veuillez sélectionner un groupe pour les séances TD/TP' });
+        setLoading(false);
+        return;
+      }
+
+      // Préparer les données de la séance
+      const seanceData = {
+        matiereId: matiereIdInt,
+        enseignantId: enseignantIdInt,
+        dateDebut: newSeance.dateDebut,
+        dateFin: newSeance.dateFin,
+        salle: newSeance.salle,
+        commentaire: newSeance.commentaire
+      };
+
+      // Ajouter groupeId uniquement si la matière est de type TD_TP
+      if (matiere?.typeSeance === 'TD_TP' && newSeance.groupeId) {
+        const groupeIdInt = parseInt(newSeance.groupeId);
+        if (isNaN(groupeIdInt) || groupeIdInt <= 0) {
+          setMessage({ type: 'error', text: 'ID de groupe invalide' });
+          setLoading(false);
+          return;
+        }
+        seanceData.groupeId = groupeIdInt;
+      }
+
+      await seanceService.create(seanceData);
       setMessage({ type: 'success', text: 'Séance créée avec succès' });
       setShowAddSeanceForm(false);
       setNewSeance({
         matiereId: '',
         enseignantId: '',
-        typeSeance: 'CM',
         dateDebut: '',
         dateFin: '',
         salle: '',
@@ -189,7 +266,12 @@ function DashboardSecretariat() {
       });
       loadData();
     } catch (error) {
-      setMessage({ type: 'error', text: error.response?.data || 'Erreur lors de la création de la séance' });
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || error.response?.data || 'Erreur lors de la création de la séance'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -622,7 +704,9 @@ function DashboardSecretariat() {
                 >
                   <option value="">Sélectionner une matière</option>
                   {matieres.map(m => (
-                    <option key={m.id} value={m.id}>{m.nom}</option>
+                    <option key={m.id} value={m.id}>
+                      {m.code} - {m.nom} ({m.typeSeance === 'CM' ? 'CM' : 'TD/TP'})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -642,18 +726,32 @@ function DashboardSecretariat() {
               </div>
             </div>
 
-            <div className="form-row">
+            {/* Afficher groupe uniquement si matière TD_TP */}
+            {newSeance.matiereId && matieres.find(m => m.id === parseInt(newSeance.matiereId))?.typeSeance === 'TD_TP' && (
               <div className="form-group">
-                <label>Type de séance *</label>
+                <label>Groupe TD/TP *</label>
                 <select
-                  value={newSeance.typeSeance}
-                  onChange={(e) => setNewSeance({ ...newSeance, typeSeance: e.target.value })}
+                  value={newSeance.groupeId}
+                  onChange={(e) => setNewSeance({ ...newSeance, groupeId: e.target.value })}
                   required
                 >
-                  <option value="CM">CM (Cours Magistral)</option>
-                  <option value="TD_TP">TD/TP</option>
+                  <option value="">Sélectionner un groupe</option>
+                  {(() => {
+                    const matiere = matieres.find(m => m.id === parseInt(newSeance.matiereId));
+                    const groupesFiltered = matiere?.formation?.id
+                      ? groupes.filter(g => g.formation?.id === matiere.formation.id)
+                      : [];
+                    return groupesFiltered.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.nom} - {g.formation?.nom}
+                      </option>
+                    ));
+                  })()}
                 </select>
               </div>
+            )}
+
+            <div className="form-row">
               <div className="form-group">
                 <label>Salle *</label>
                 <input
@@ -665,22 +763,6 @@ function DashboardSecretariat() {
                 />
               </div>
             </div>
-
-            {newSeance.typeSeance === 'TD_TP' && (
-              <div className="form-group">
-                <label>Groupe TD/TP *</label>
-                <select
-                  value={newSeance.groupeId}
-                  onChange={(e) => setNewSeance({ ...newSeance, groupeId: e.target.value })}
-                  required
-                >
-                  <option value="">Sélectionner un groupe</option>
-                  {groupes.map(g => (
-                    <option key={g.id} value={g.id}>{g.nom} - {g.formation?.nom}</option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <div className="form-row">
               <div className="form-group">

@@ -83,6 +83,24 @@ function DashboardEtudiant() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (validateMessage.text) {
+      const timer = setTimeout(() => {
+        setValidateMessage({ type: '', text: '' });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [validateMessage]);
+
+  useEffect(() => {
+    if (justifMessage.text) {
+      const timer = setTimeout(() => {
+        setJustifMessage({ type: '', text: '' });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [justifMessage]);
+
   const loadStatistics = async () => {
     try {
       const response = await presenceService.getStatistiques(user.id);
@@ -185,9 +203,10 @@ function DashboardEtudiant() {
       setSeanceId('');
       loadStatistics();
     } catch (error) {
+      const errorMessage = error.response?.data?.message || error.response?.data || error.message || 'Code invalide ou expiré';
       setValidateMessage({
         type: 'error',
-        text: error.response?.data?.message || 'Code invalide ou expiré'
+        text: errorMessage
       });
     } finally {
       setLoading(false);
